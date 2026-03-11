@@ -1,0 +1,23 @@
+.DS_Store
+
+# Environment
+.env
+.env.*
+
+# JavaScript / TypeScript
+node_modules/
+dist/
+build/
+coverage/
+.next/
+.expo/
+
+# Apple / Xcode
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# Mobile
+ios/Pods/
+android/.gradle/
+android/app/build/
