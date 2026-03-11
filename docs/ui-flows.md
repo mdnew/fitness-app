@@ -54,7 +54,7 @@ Recommended MVP tab structure:
 
 Notes:
 
-- `Goals` can include both the ordered goals list and access to dated events / detected activities
+- `Goals` should include a ranked goals list plus a separate detected activities review list
 - `Routine` can include locations, since those two concepts are tightly connected for MVP
 
 ## Apple Watch Navigation Model
@@ -107,11 +107,11 @@ Key content:
 Purpose:
 
 - show activity types detected from Apple Health
-- let the user decide what matters
+- let the user decide what should become a goal now versus stay unprioritized
 
 Primary actions:
 
-- reorder activities
+- add activity to goals
 - delete irrelevant activities
 - set `maintain` or `improve`
 - `Continue`
@@ -207,7 +207,7 @@ Purpose:
 Sections:
 
 - ordered goals list
-- detected activity types
+- detected activity types not yet in goals
 - upcoming events
 - today recommendation summary
 
@@ -216,7 +216,7 @@ Primary actions:
 - drag to reorder goals
 - tap goal to edit
 - add event
-- convert detected activity into active focus
+- add detected activity into goals
 - delete irrelevant activity
 
 Goal row content:
@@ -229,6 +229,7 @@ Goal row content:
 Behavior:
 
 - top-to-bottom order is the main priority system
+- detected activities should stay out of the ordered goals list until the user adds them
 - app may suggest reorderings, but the user decides
 
 ### Flow 3: Event Editor

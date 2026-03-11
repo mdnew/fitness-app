@@ -290,7 +290,7 @@ Every app launch on `iPhone` should:
 
 1. refresh Apple Health workout history
 2. detect any new activity types
-3. append newly detected activities to the bottom of the ordered list
+3. append newly detected activities to the bottom of the detected activities review list
 4. rebuild goals if needed
 5. rebuild recommendation outputs
 6. sync the latest workout snapshot to watch
@@ -366,7 +366,7 @@ Deliverables:
 - Health permissions flow
 - import all available workout history
 - detect activity types from history
-- append new detected activities to the bottom of the ordered list
+- append new detected activities to the bottom of the detected activities review list
 
 ### Milestone 4: Planning Surfaces On iPhone
 

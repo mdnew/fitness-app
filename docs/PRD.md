@@ -175,7 +175,7 @@ These signals should only be used when they clearly help the app make a better d
 - As Matt, I want to add an upcoming event with a type and date so the app knows what I've got coming up and can use it to shape my current goals.
 - As Matt, I want a way to add a recurring activity such as `surfing` even if there is no fixed event date so it can shape my current goals.
 - As Matt, I want to set whether a recurring activity like `cycling` is something I am trying to improve at or just maintain.
-- As Matt, I want the app to show the activity types it detects from my Apple Health history so I can rank the ones that matter and delete the ones that do not.
+- As Matt, I want the app to show the activity types it detects from my Apple Health history in a separate review list so I can add the ones that matter to my goals and delete the ones that do not.
 
 #### Goals
 - As Matt, I want a way to see the current goals I'm working on based on my events and recurring activities.
@@ -228,9 +228,10 @@ These signals should only be used when they clearly help the app make a better d
 - The system must store goal type, notes, goal emphasis, goal order, and either a target date or recurring activity details.
 - The system must support at least the initial goal types listed in this document.
 - The system must provide a way to view the current active goals the user is preparing for.
-- The system should surface detected recurring activity types from Apple Health history so the user can rank them or delete them from consideration.
-- The system should append newly detected recurring activity types to the bottom of the ordered goals list by default.
+- The system should surface detected recurring activity types from Apple Health history in a separate review list so the user can add them to goals or delete them from consideration.
+- The system should append newly detected recurring activity types to the bottom of the detected activities review list by default.
 - The system must allow the user to reorder active goals from top to bottom.
+- The system must support direct drag-and-drop reordering of active goals on the `Goals` screen.
 - The system should suggest goal reorderings when dated events become more urgent or recurring activities become more relevant.
 
 ### Locations

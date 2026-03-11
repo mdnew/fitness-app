@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ContentView: View {
     var body: some View {
@@ -35,6 +36,7 @@ struct ContentView: View {
 
 private struct GoalsScreen: View {
     @EnvironmentObject private var store: AppStore
+    @State private var draggedGoal: GoalItem?
 
     var body: some View {
         NavigationStack {
@@ -67,11 +69,29 @@ private struct GoalsScreen: View {
                     }
                 }
 
-                SectionTitle(title: "Ordered Goals")
+                HStack {
+                    SectionTitle(title: "Ordered Goals")
+                    Spacer()
+                    Text("Drag to reorder")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 AppCard {
                     VStack(spacing: 10) {
                         ForEach(Array(store.goals.enumerated()), id: \.element.id) { index, goal in
                             GoalRow(index: index + 1, goal: goal)
+                                .onDrag {
+                                    draggedGoal = goal
+                                    return NSItemProvider(object: goal.id.uuidString as NSString)
+                                }
+                                .onDrop(
+                                    of: [UTType.text],
+                                    delegate: GoalDropDelegate(
+                                        targetGoal: goal,
+                                        store: store,
+                                        draggedGoal: $draggedGoal
+                                    )
+                                )
                             if index < store.goals.count - 1 {
                                 Divider()
                             }
@@ -81,13 +101,23 @@ private struct GoalsScreen: View {
 
                 SectionTitle(title: "Detected Activities")
                 AppCard {
-                    if store.recurringActivities.isEmpty {
-                        EmptyCardMessage(message: "No detected activities yet. Connect Apple Health and refresh to pull in recurring activity types.")
+                    if unrankedDetectedActivities.isEmpty {
+                        EmptyCardMessage(message: "No unranked detected activities. Connect Apple Health and refresh to pull in recurring activity types, then add the ones you want to prioritize.")
                     } else {
                         VStack(spacing: 10) {
-                            ForEach(Array(store.recurringActivities.enumerated()), id: \.element.id) { index, activity in
-                                ActivityRow(activity: activity)
-                                if index < store.recurringActivities.count - 1 {
+                            ForEach(Array(unrankedDetectedActivities.enumerated()), id: \.element.id) { index, activity in
+                                ActivityRow(
+                                    activity: activity,
+                                    onAddToGoals: {
+                                        store.addGoalForRecurringActivity(activity)
+                                        store.persist()
+                                    },
+                                    onRemove: {
+                                        store.removeRecurringActivity(id: activity.id)
+                                        store.persist()
+                                    }
+                                )
+                                if index < unrankedDetectedActivities.count - 1 {
                                     Divider()
                                 }
                             }
@@ -110,6 +140,15 @@ private struct GoalsScreen: View {
             .blue
         case .failed:
             .red
+        }
+    }
+
+    private var unrankedDetectedActivities: [RecurringActivityItem] {
+        store.recurringActivities.filter { activity in
+            !store.goals.contains {
+                $0.sourceKind == .recurringActivity &&
+                $0.title.caseInsensitiveCompare(activity.activityType) == .orderedSame
+            }
         }
     }
 }
@@ -280,307 +319,277 @@ private struct SettingsScreen: View {
 
     var body: some View {
         NavigationStack {
-            ScreenScrollContainer {
-                AppCard {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Training Setup")
-                            .font(.headline)
-
-                        Text("Manage the saved data the app uses to build workouts and prefill the watch experience.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-
-                        Divider()
-
-                        KeyValueRow(label: "Locations", value: "\(store.locations.count)")
-                        Divider()
-                        KeyValueRow(label: "Equipment Items", value: "\(store.equipmentCatalog.count)")
-                        Divider()
-                        KeyValueRow(label: "Exercises", value: "\(store.exerciseLibrary.count)")
+            ScrollViewReader { proxy in
+                ScreenScrollContainer {
+                    HStack {
+                        SectionTitle(title: "Locations")
+                        Spacer()
+                        Button {
+                            isAddingLocation = true
+                        } label: {
+                            Label("Add Location", systemImage: "plus")
+                                .font(.subheadline.weight(.semibold))
+                        }
                     }
-                }
 
-                HStack {
-                    SectionTitle(title: "Exercise Library")
-                    Spacer()
-                    Button {
-                        isAddingExercise = true
-                    } label: {
-                        Label("Add Exercise", systemImage: "plus")
-                            .font(.subheadline.weight(.semibold))
-                    }
-                }
-
-                AppCard {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("\(store.exerciseLibrary.count) exercises available")
-                            .font(.headline)
-
-                        Text("The recommendation engine can choose from built-in and custom lifting options with movement, equipment, and body-part metadata.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-
-                        FlexibleTagRow(tags: exerciseLibraryHighlights)
-                    }
-                }
-
-                VStack(spacing: 10) {
-                    ForEach(store.exerciseLibrary) { exercise in
-                        AppCard {
-                            VStack(alignment: .leading, spacing: 10) {
-                                HStack(alignment: .top) {
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        HStack(spacing: 8) {
-                                            Text(exercise.name)
+                    VStack(spacing: 10) {
+                        if store.locations.isEmpty {
+                            AppCard {
+                                EmptyCardMessage(message: "No saved locations yet. Add one so routines can set watch defaults.")
+                            }
+                        } else {
+                            ForEach(store.locations) { location in
+                                AppCard {
+                                    VStack(alignment: .leading, spacing: 10) {
+                                        HStack(alignment: .top) {
+                                            Text(location.name)
                                                 .font(.headline)
 
-                                            Text(exercise.source.title)
-                                                .font(.caption.weight(.semibold))
-                                                .foregroundStyle(exercise.source == .custom ? .green : .secondary)
-                                                .padding(.horizontal, 8)
-                                                .padding(.vertical, 4)
-                                                .background((exercise.source == .custom ? Color.green : Color.secondary).opacity(0.12), in: Capsule())
+                                            Spacer()
+
+                                            HStack(spacing: 8) {
+                                                SmallIconButton(systemImage: "pencil") {
+                                                    editingLocation = location
+                                                }
+
+                                                SmallIconButton(systemImage: "trash", tint: .red) {
+                                                    store.removeLocation(id: location.id)
+                                                    store.persist()
+                                                }
+                                            }
                                         }
 
-                                        Text(exercise.movementPattern.title)
+                                        Text(locationEquipmentSummary(for: location))
                                             .font(.subheadline)
                                             .foregroundStyle(.secondary)
                                     }
+                                }
+                            }
+                        }
+                    }
+
+                    HStack {
+                        SectionTitle(title: "Equipment Catalog")
+                        Spacer()
+                        Button {
+                            isAddingEquipment = true
+                        } label: {
+                            Label("Add Equipment", systemImage: "plus")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                    }
+
+                    VStack(spacing: 10) {
+                        ForEach(store.equipmentCatalog) { equipment in
+                            AppCard {
+                                HStack {
+                                    Text(equipment.name)
+                                        .font(.headline)
 
                                     Spacer()
 
                                     HStack(spacing: 8) {
                                         SmallIconButton(systemImage: "pencil") {
-                                            editingExercise = exercise
+                                            editingEquipment = equipment
                                         }
 
-                                        if exercise.source == .custom {
-                                            SmallIconButton(systemImage: "trash", tint: .red) {
-                                                store.removeExerciseLibraryItem(id: exercise.id)
-                                                store.persist()
-                                            }
+                                        SmallIconButton(systemImage: "trash", tint: .red) {
+                                            store.removeEquipmentItem(id: equipment.id)
+                                            store.persist()
                                         }
                                     }
                                 }
-
-                                Text(exercise.notes)
-                                    .font(.footnote)
-                                    .foregroundStyle(.secondary)
-
-                                FlexibleTagRow(tags: exercise.primaryMuscles.map(\.title))
-
-                                FlexibleTagRow(tags: exercise.requiredEquipment.map(\.title))
                             }
                         }
                     }
-                }
 
-                AppCard {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Health Sync")
-                            .font(.headline)
-
-                        Text("Manage Apple Health permissions and keep detected activities current.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-
-                        Divider()
-
-                        KeyValueRow(label: "Status", value: store.healthSyncState.title)
-
-                        Divider()
-
-                        FeatureRow(
-                            title: "Refresh Apple Health on launch",
-                            systemImage: "heart.text.square"
-                        )
-
-                        Divider()
-
-                        FeatureRow(
-                            title: "Append new detected activities to the bottom",
-                            systemImage: "arrow.down.to.line"
-                        )
+                    HStack {
+                        SectionTitle(title: "Exercise Library")
+                        Spacer()
+                        Button {
+                            isAddingExercise = true
+                        } label: {
+                            Label("Add Exercise", systemImage: "plus")
+                                .font(.subheadline.weight(.semibold))
+                        }
                     }
-                }
 
-                AppCard {
                     VStack(spacing: 10) {
-                        WideActionButton(
-                            title: "Connect Apple Health",
-                            tint: .blue
-                        ) {
-                            Task {
-                                await healthSyncController.connectAndRefresh(using: store)
-                            }
-                        }
-
-                        WideActionButton(
-                            title: "Refresh Now",
-                            tint: .green
-                        ) {
-                            Task {
-                                await healthSyncController.refresh(using: store)
-                            }
-                        }
-                    }
-                }
-
-                HStack {
-                    SectionTitle(title: "Locations")
-                    Spacer()
-                    Button {
-                        isAddingLocation = true
-                    } label: {
-                        Label("Add Location", systemImage: "plus")
-                            .font(.subheadline.weight(.semibold))
-                    }
-                }
-
-                VStack(spacing: 10) {
-                    if store.locations.isEmpty {
-                        AppCard {
-                            EmptyCardMessage(message: "No saved locations yet. Add one so routines can set watch defaults.")
-                        }
-                    } else {
-                        ForEach(store.locations) { location in
+                        ForEach(store.exerciseLibrary) { exercise in
                             AppCard {
                                 VStack(alignment: .leading, spacing: 10) {
                                     HStack(alignment: .top) {
-                                        Text(location.name)
-                                            .font(.headline)
+                                        VStack(alignment: .leading, spacing: 6) {
+                                            HStack(spacing: 8) {
+                                                Text(exercise.name)
+                                                    .font(.headline)
+
+                                                Text(exercise.source.title)
+                                                    .font(.caption.weight(.semibold))
+                                                    .foregroundStyle(exercise.source == .custom ? .green : .secondary)
+                                                    .padding(.horizontal, 8)
+                                                    .padding(.vertical, 4)
+                                                    .background((exercise.source == .custom ? Color.green : Color.secondary).opacity(0.12), in: Capsule())
+                                            }
+
+                                            Text(exercise.movementPattern.title)
+                                                .font(.subheadline)
+                                                .foregroundStyle(.secondary)
+                                        }
 
                                         Spacer()
 
                                         HStack(spacing: 8) {
                                             SmallIconButton(systemImage: "pencil") {
-                                                editingLocation = location
+                                                editingExercise = exercise
                                             }
 
-                                            SmallIconButton(systemImage: "trash", tint: .red) {
-                                                store.removeLocation(id: location.id)
-                                                store.persist()
+                                            if exercise.source == .custom {
+                                                SmallIconButton(systemImage: "trash", tint: .red) {
+                                                    store.removeExerciseLibraryItem(id: exercise.id)
+                                                    store.persist()
+                                                }
                                             }
                                         }
                                     }
 
-                                    Text(locationEquipmentSummary(for: location))
-                                        .font(.subheadline)
+                                    Text(exercise.notes)
+                                        .font(.footnote)
                                         .foregroundStyle(.secondary)
+
+                                    FlexibleTagRow(tags: exercise.primaryMuscles.map(\.title))
+
+                                    FlexibleTagRow(tags: exercise.requiredEquipment.map(\.title))
                                 }
                             }
                         }
                     }
-                }
 
-                HStack {
-                    SectionTitle(title: "Equipment Catalog")
-                    Spacer()
-                    Button {
-                        isAddingEquipment = true
-                    } label: {
-                        Label("Add Equipment", systemImage: "plus")
-                            .font(.subheadline.weight(.semibold))
-                    }
-                }
-
-                VStack(spacing: 10) {
-                    ForEach(store.equipmentCatalog) { equipment in
-                        AppCard {
-                            HStack {
-                                Text(equipment.name)
-                                    .font(.headline)
-
-                                Spacer()
-
-                                HStack(spacing: 8) {
-                                    SmallIconButton(systemImage: "pencil") {
-                                        editingEquipment = equipment
-                                    }
-
-                                    SmallIconButton(systemImage: "trash", tint: .red) {
-                                        store.removeEquipmentItem(id: equipment.id)
-                                        store.persist()
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                SectionTitle(title: "Today")
-                AppCard {
-                    if let routineDay = store.todayRoutineDay {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Today's default")
+                    AppCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Health Sync")
                                 .font(.headline)
-                            Text("\(routineDay.weekday.title) • \(routineDay.focusSummary)")
-                                .font(.subheadline)
-                            Text(routineDefaultsText(for: routineDay))
-                                .font(.subheadline)
+
+                            Text("Manage Apple Health permissions and keep detected activities current.")
+                                .font(.footnote)
                                 .foregroundStyle(.secondary)
+
+                            Divider()
+
+                            KeyValueRow(label: "Status", value: store.healthSyncState.title)
+
+                            Divider()
+
+                            FeatureRow(
+                                title: "Refresh Apple Health on launch",
+                                systemImage: "heart.text.square"
+                            )
+
+                            Divider()
+
+                            FeatureRow(
+                                title: "Append new detected activities to the bottom",
+                                systemImage: "arrow.down.to.line"
+                            )
                         }
-                    } else {
-                        EmptyCardMessage(message: "No routine defaults configured for today.")
+                    }
+
+                    AppCard {
+                        VStack(spacing: 10) {
+                            WideActionButton(
+                                title: "Connect Apple Health",
+                                tint: .blue
+                            ) {
+                                Task {
+                                    await healthSyncController.connectAndRefresh(using: store)
+                                }
+                            }
+
+                            WideActionButton(
+                                title: "Refresh Now",
+                                tint: .green
+                            ) {
+                                Task {
+                                    await healthSyncController.refresh(using: store)
+                                }
+                            }
+                        }
+                    }
+
+                    SectionTitle(title: "Today")
+                    AppCard {
+                        if let routineDay = store.todayRoutineDay {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Today's default")
+                                    .font(.headline)
+                                Text("\(routineDay.weekday.title) • \(routineDay.focusSummary)")
+                                    .font(.subheadline)
+                                Text(routineDefaultsText(for: routineDay))
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } else {
+                            EmptyCardMessage(message: "No routine defaults configured for today.")
+                        }
                     }
                 }
-            }
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .sheet(item: $editingLocation) { location in
-                LocationEditorView(
-                    title: "Edit Location",
-                    initialLocation: location,
-                    equipmentCatalog: store.equipmentCatalog
-                ) { updatedLocation in
-                    store.upsertLocation(updatedLocation)
-                    store.persist()
+                .navigationTitle("Settings")
+                .navigationBarTitleDisplayMode(.inline)
+                .sheet(item: $editingLocation) { location in
+                    LocationEditorView(
+                        title: "Edit Location",
+                        initialLocation: location,
+                        equipmentCatalog: store.equipmentCatalog
+                    ) { updatedLocation in
+                        store.upsertLocation(updatedLocation)
+                        store.persist()
+                    }
                 }
-            }
-            .sheet(isPresented: $isAddingLocation) {
-                LocationEditorView(
-                    title: "Add Location",
-                    initialLocation: nil,
-                    equipmentCatalog: store.equipmentCatalog
-                ) { newLocation in
-                    store.upsertLocation(newLocation)
-                    store.persist()
+                .sheet(isPresented: $isAddingLocation) {
+                    LocationEditorView(
+                        title: "Add Location",
+                        initialLocation: nil,
+                        equipmentCatalog: store.equipmentCatalog
+                    ) { newLocation in
+                        store.upsertLocation(newLocation)
+                        store.persist()
+                    }
                 }
-            }
-            .sheet(item: $editingEquipment) { equipment in
-                EquipmentEditorView(
-                    title: "Edit Equipment",
-                    initialEquipment: equipment
-                ) { updatedEquipment in
-                    store.upsertEquipmentItem(updatedEquipment)
-                    store.persist()
+                .sheet(item: $editingEquipment) { equipment in
+                    EquipmentEditorView(
+                        title: "Edit Equipment",
+                        initialEquipment: equipment
+                    ) { updatedEquipment in
+                        store.upsertEquipmentItem(updatedEquipment)
+                        store.persist()
+                    }
                 }
-            }
-            .sheet(isPresented: $isAddingEquipment) {
-                EquipmentEditorView(
-                    title: "Add Equipment",
-                    initialEquipment: nil
-                ) { newEquipment in
-                    store.upsertEquipmentItem(newEquipment)
-                    store.persist()
+                .sheet(isPresented: $isAddingEquipment) {
+                    EquipmentEditorView(
+                        title: "Add Equipment",
+                        initialEquipment: nil
+                    ) { newEquipment in
+                        store.upsertEquipmentItem(newEquipment)
+                        store.persist()
+                    }
                 }
-            }
-            .sheet(item: $editingExercise) { exercise in
-                ExerciseEditorView(
-                    title: "Edit Exercise",
-                    initialExercise: exercise
-                ) { updatedExercise in
-                    store.upsertExerciseLibraryItem(updatedExercise)
-                    store.persist()
+                .sheet(item: $editingExercise) { exercise in
+                    ExerciseEditorView(
+                        title: "Edit Exercise",
+                        initialExercise: exercise
+                    ) { updatedExercise in
+                        store.upsertExerciseLibraryItem(updatedExercise)
+                        store.persist()
+                    }
                 }
-            }
-            .sheet(isPresented: $isAddingExercise) {
-                ExerciseEditorView(
-                    title: "Add Exercise",
-                    initialExercise: nil
-                ) { newExercise in
-                    store.upsertExerciseLibraryItem(newExercise)
-                    store.persist()
+                .sheet(isPresented: $isAddingExercise) {
+                    ExerciseEditorView(
+                        title: "Add Exercise",
+                        initialExercise: nil
+                    ) { newExercise in
+                        store.upsertExerciseLibraryItem(newExercise)
+                        store.persist()
+                    }
                 }
             }
         }
@@ -598,11 +607,6 @@ private struct SettingsScreen: View {
         }
 
         return location.equipmentSummary
-    }
-
-    private var exerciseLibraryHighlights: [String] {
-        let patternTitles = Set(store.exerciseLibrary.map { $0.movementPattern.title })
-        return Array(patternTitles).sorted()
     }
 }
 
@@ -710,6 +714,12 @@ private struct GoalRow: View {
                         .background(Color.blue.opacity(0.12), in: Capsule())
                 }
             }
+
+            Spacer(minLength: 8)
+
+            Image(systemName: "line.3.horizontal")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -717,6 +727,8 @@ private struct GoalRow: View {
 
 private struct ActivityRow: View {
     let activity: RecurringActivityItem
+    let onAddToGoals: () -> Void
+    let onRemove: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -732,6 +744,16 @@ private struct ActivityRow: View {
                     .background(Color.blue.opacity(0.12), in: Capsule())
             }
 
+            HStack(spacing: 8) {
+                Button("Add to Goals", action: onAddToGoals)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+
+                Button("Remove", role: .destructive, action: onRemove)
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+            }
+
             if activity.isDetectedFromHealth {
                 Label("Detected from Apple Health", systemImage: "waveform.path.ecg")
                     .font(.footnote)
@@ -739,6 +761,42 @@ private struct ActivityRow: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct GoalDropDelegate: DropDelegate {
+    let targetGoal: GoalItem
+    let store: AppStore
+    @Binding var draggedGoal: GoalItem?
+
+    func dropEntered(info: DropInfo) {
+        guard
+            let draggedGoal,
+            draggedGoal != targetGoal,
+            let fromIndex = store.goals.firstIndex(of: draggedGoal),
+            let toIndex = store.goals.firstIndex(of: targetGoal)
+        else {
+            return
+        }
+
+        if store.goals[toIndex] != draggedGoal {
+            withAnimation {
+                store.moveGoals(
+                    fromOffsets: IndexSet(integer: fromIndex),
+                    toOffset: toIndex > fromIndex ? toIndex + 1 : toIndex
+                )
+            }
+        }
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        draggedGoal = nil
+        store.persist()
+        return true
     }
 }
 

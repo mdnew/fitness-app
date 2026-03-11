@@ -682,6 +682,32 @@ final class AppStore: ObservableObject {
         routineDays.removeAll { $0.id == id }
     }
 
+    func moveGoals(fromOffsets: IndexSet, toOffset: Int) {
+        goals.move(fromOffsets: fromOffsets, toOffset: toOffset)
+    }
+
+    func addGoalForRecurringActivity(_ activity: RecurringActivityItem) {
+        let alreadyExists = goals.contains {
+            $0.sourceKind == .recurringActivity &&
+            $0.title.caseInsensitiveCompare(activity.activityType) == .orderedSame
+        }
+
+        guard !alreadyExists else { return }
+
+        goals.append(
+            GoalItem(
+                id: UUID(),
+                title: activity.activityType,
+                sourceKind: .recurringActivity,
+                emphasis: activity.emphasis
+            )
+        )
+    }
+
+    func removeRecurringActivity(id: UUID) {
+        recurringActivities.removeAll { $0.id == id }
+    }
+
     func upsertLocation(_ location: LocationItem) {
         if let index = locations.firstIndex(where: { $0.id == location.id }) {
             locations[index] = location
@@ -780,15 +806,6 @@ final class AppStore: ObservableObject {
                     isDetectedFromHealth: true
                 )
                 recurringActivities.append(activity)
-
-                goals.append(
-                    GoalItem(
-                        id: UUID(),
-                        title: activityType,
-                        sourceKind: .recurringActivity,
-                        emphasis: .maintain
-                    )
-                )
             }
         }
     }
