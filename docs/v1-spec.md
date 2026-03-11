@@ -112,6 +112,7 @@ The recommendation engine should instead rely on:
 - goal order
 - weight-training routine
 - location and equipment
+- a curated exercise library with movement and equipment metadata
 - current workout state during live sessions
 
 Additional signals such as `sleep`, `resting heart rate`, `HRV`, `active energy`, `step count`, and `body weight` may be collected for future use, but they should not change recommendations in v1.
@@ -283,6 +284,7 @@ The recommendation engine uses:
 - readiness snapshot
 - location and equipment
 - weight-training routine by day
+- exercise library metadata
 - current workout state during live sessions
 
 ### Outputs
@@ -421,6 +423,29 @@ Suggested fields:
 - `recommendationSummary`
 - `createdAt`
 - `updatedAt`
+
+### ExerciseLibraryItem
+
+Represents a curated exercise the app is allowed to recommend.
+
+Suggested fields:
+
+- `id`
+- `name`
+- `movementPattern`
+- `requiredEquipment`
+- `primaryMuscles`
+- `goalSupportTags`
+- `skillLevel`
+- `isUnilateral`
+- `notes`
+
+Notes:
+
+- this should be a curated catalog, not an exhaustive list of every possible gym variation
+- the initial catalog should cover common squat, hinge, push, pull, carry, single-leg, and core patterns
+- recommendation logic should choose from this library first, then apply location and equipment filtering before building a workout
+- substitutions can be modeled later as explicit relationships between library items
 
 ### PlannedExercise
 

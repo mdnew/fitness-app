@@ -14,8 +14,11 @@ coverage/
 
 # Apple / Xcode
 DerivedData/
+.derived/
+.build/
 *.xcuserstate
 xcuserdata/
+.tools/XcodeGen/
 
 # Mobile
 ios/Pods/

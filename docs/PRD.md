@@ -249,6 +249,8 @@ These signals should only be used when they clearly help the app make a better d
 
 - The system must generate lifting recommendations based on goal type, recent workout history, weight-training routine information, and location equipment constraints.
 - The system must treat the ordered goals list as the primary priority signal for recommendations.
+- The system must maintain a curated exercise library that the recommendation engine can choose from when building workouts.
+- The system should store exercise metadata such as movement pattern, required equipment, primary muscle groups, and goal-support tags so recommendations can stay explainable and location-aware.
 - The system should not use additional Apple Health readiness signals to change recommendations in the MVP.
 - The system should account for recurring activity frequency, seasonal timing, and whether the user wants to improve or maintain that activity when deciding how much strength work should support it.
 - The system should treat `maintain` as light background support and `improve` as a stronger driver of exercise selection and weekly emphasis.

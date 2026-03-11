@@ -1,0 +1,63 @@
+name: FitnessApp
+
+options:
+  bundleIdPrefix: com.mnew
+
+settings:
+  base:
+    SWIFT_VERSION: 6.0
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: 1.0
+    GENERATE_INFOPLIST_FILE: YES
+
+targets:
+  FitnessApp:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: FitnessApp
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.mnew.FitnessApp
+        PRODUCT_NAME: FitnessApp
+        TARGETED_DEVICE_FAMILY: 1
+        CODE_SIGN_ENTITLEMENTS: FitnessApp/FitnessApp.entitlements
+        INFOPLIST_KEY_CFBundleDisplayName: Fitness
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_NSHealthShareUsageDescription: Fitness uses your Apple Health workout history to detect recurring activities and improve planning.
+        INFOPLIST_KEY_NSHealthUpdateUsageDescription: Fitness writes completed strength workouts to Apple Health to keep your workout history complete.
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone:
+          - UIInterfaceOrientationPortrait
+    dependencies:
+      - target: FitnessWatchApp
+
+  FitnessWatchApp:
+    type: application.watchapp2
+    platform: watchOS
+    deploymentTarget: "10.0"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.mnew.FitnessApp.watchkitapp
+        PRODUCT_NAME: FitnessWatchApp
+        INFOPLIST_KEY_CFBundleDisplayName: Fitness
+        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.mnew.FitnessApp
+        ONLY_ACTIVE_ARCH: NO
+    dependencies:
+      - target: FitnessWatchAppExtension
+
+  FitnessWatchAppExtension:
+    type: watchkit2-extension
+    platform: watchOS
+    deploymentTarget: "10.0"
+    sources:
+      - path: FitnessWatchApp
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.mnew.FitnessApp.watchkitapp.watchkitextension
+        PRODUCT_NAME: FitnessWatchAppExtension
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: FitnessWatchApp/FitnessWatchAppExtension-Info.plist
