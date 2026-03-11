@@ -11,7 +11,7 @@ Personal fitness planning app concept focused on turning Apple Health workout hi
 
 ## Product Direction
 
-The current product definition lives in `PRD.md`.
+The current product definition lives in `docs/PRD.md`.
 
 ## Current Status
 
