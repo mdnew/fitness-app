@@ -135,12 +135,11 @@ The app should focus primarily on exercise recommendation rather than prescripti
 
 ### Rule 1: Build Current Goals From Inputs
 
-The app should convert user-managed inputs into active goals:
+The app should treat goals as an explicit user-managed ranked list:
 
-- each dated event becomes an active goal when it falls inside the planning window
-- each recurring activity becomes an active goal when the user has marked it active, seasonal, or worth preparing for now
-- Apple Health should surface detected activity types in a separate review list so the user can add them to goals, keep them for later, or delete them before they become active goals
-- newly detected activity types should be appended to the bottom of the detected activities review list by default
+- the goals list starts empty on first install
+- the user can add an activity manually straight into the ranked goals list using the Apple Health workout-type vocabulary
+- the user can add an activity from imported workout history using the workout type
 - the app should present active goals as an ordered list that the user can adjust directly with drag-and-drop
 
 ### Rule 2: Planning Window
@@ -244,18 +243,14 @@ If the user overrides an exercise:
 
 ### Rule 9: Recurring Activity Suggestions
 
-The app should surface all detected recurring activity types from Apple Health history for user review rather than trying to hide them behind a threshold.
-
-Detected activities should be shown as reviewable inputs, not auto-activated goals.
+Imported workout history should give the user a clear path to add recurring activities into goals without auto-activating them.
 
 The user should be able to:
 
-- add the activities that matter right now into the active goals list
-- set whether each one is `maintain` or `improve`
-- delete activities that are no longer relevant
-- optionally add schedule hints or seasonality
-
-Newly detected activities should be inserted at the bottom of the detected activities review list so they never silently outrank the user's existing priorities.
+- review past workout types in `History`
+- add a workout type directly into the ranked goals list
+- avoid duplicate goal entries for the same activity
+- set whether a manually added activity should be `maintain` or `improve`
 
 ### Rule 10: Goal Reordering Suggestions
 
@@ -527,8 +522,8 @@ Important:
 1. User installs app on `iPhone`
 2. User grants Apple Health permissions
 3. App imports workout history and available readiness signals
-4. App surfaces detected recurring activity types from Apple Health
-5. User adds relevant activities into goals, deletes irrelevant ones, and sets initial goal emphasis
+4. App leaves the ranked goals list empty until the user adds something intentionally
+5. User adds a manual activity or picks one from imported `History`
 6. User drag-reorders the starting goals list from top to bottom
 7. User adds one location and one weight-training routine pattern
 8. App generates the first weekly recommendation
@@ -537,9 +532,9 @@ Important:
 
 1. User opens the app
 2. App refreshes Apple Health workout history
-3. App detects any newly seen activity types
-4. App appends new detected activity types to the bottom of the detected activities review list
-5. App refreshes goals, plan, and explanations
+3. App updates `History` with any newly imported workout types
+4. User can add relevant workout types from `History` into goals
+5. App refreshes plan and explanations based on the explicit goals list
 
 ### Flow 2: Manage Events And Activities
 

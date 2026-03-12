@@ -143,7 +143,8 @@ In this product, `goals` are the active things the user is currently training to
 
 - `events` are dated future activities such as a `5K`, `ski trip`, or `hike`
 - `recurring activities` are ongoing or seasonal activities such as `surfing` or `cycling`
-- the app uses events and recurring activities as inputs that shape one or more current goals
+- the app starts with an empty goals list on first install
+- the user adds goals explicitly, either by entering an activity manually or by adding an activity from imported workout history
 - the `Goals` screen presents those current goals as an ordered list from highest to lowest importance
 
 This keeps the product focused on what the user is trying to improve right now, while still allowing the `Events` screen to be the place where those future inputs are managed.
@@ -170,15 +171,18 @@ These signals should only be used when they clearly help the app make a better d
 - As Matt, I want the app to refresh my Apple Health workout history when I open it so the recommendations reflect recent activity.
 - As Matt, I want the app to use a few useful Apple Health signals like sleep and resting heart rate so recommendations can better reflect how recovered I am.
 - As Matt, I want to write my workout data to Apple Health as Traditional Strength Training
+- As Matt, I want to add an activity from my imported workout history into my goals when I decide it matters.
 
 #### Events
 - As Matt, I want to add an upcoming event with a type and date so the app knows what I've got coming up and can use it to shape my current goals.
 - As Matt, I want a way to add a recurring activity such as `surfing` even if there is no fixed event date so it can shape my current goals.
 - As Matt, I want to set whether a recurring activity like `cycling` is something I am trying to improve at or just maintain.
-- As Matt, I want the app to show the activity types it detects from my Apple Health history in a separate review list so I can add the ones that matter to my goals and delete the ones that do not.
+- As Matt, I want the app to show the activity types it detects from my Apple Health history so I can rank the ones that matter and delete the ones that do not.
 
 #### Goals
-- As Matt, I want a way to see the current goals I'm working on based on my events and recurring activities.
+- As Matt, I want my goals list to start empty on first install so I can choose what matters instead of inheriting defaults.
+- As Matt, I want a way to add an activity manually into my goals from the same workout-type list Apple Health uses when logging workouts.
+- As Matt, I want a way to see the current goals I'm working on based on the activities I have chosen to focus on.
 - As Matt, I want to order my current goals from top to bottom so the app knows what matters most right now.
 - As Matt, I want the app to suggest reorderings when upcoming events or recurring activities change in importance.
 
@@ -224,12 +228,12 @@ These signals should only be used when they clearly help the app make a better d
 - The system must allow the user to create, edit, and remove goals.
 - The system must allow the user to create, edit, and remove dated events and recurring activities as the main inputs that drive goals.
 - The system must support both fixed-date events and recurring activities as goal types.
-- The system must derive or represent current goals from those events and recurring activities.
+- The system must support an empty goals list on first install.
+- The system must allow the user to add goals manually.
+- The system must allow the user to add a goal from imported workout history using the workout activity type.
 - The system must store goal type, notes, goal emphasis, goal order, and either a target date or recurring activity details.
 - The system must support at least the initial goal types listed in this document.
 - The system must provide a way to view the current active goals the user is preparing for.
-- The system should surface detected recurring activity types from Apple Health history in a separate review list so the user can add them to goals or delete them from consideration.
-- The system should append newly detected recurring activity types to the bottom of the detected activities review list by default.
 - The system must allow the user to reorder active goals from top to bottom.
 - The system must support direct drag-and-drop reordering of active goals on the `Goals` screen.
 - The system should suggest goal reorderings when dated events become more urgent or recurring activities become more relevant.

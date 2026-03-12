@@ -1,6 +1,109 @@
 import Foundation
 import HealthKit
 
+struct WorkoutActivityCatalog {
+    struct ActivityOption: Identifiable, Hashable {
+        let healthKitType: HKWorkoutActivityType
+        let title: String
+
+        var id: Int { Int(healthKitType.rawValue) }
+    }
+
+    static let all: [ActivityOption] = [
+        option(.americanFootball, "American Football"),
+        option(.archery, "Archery"),
+        option(.australianFootball, "Australian Football"),
+        option(.badminton, "Badminton"),
+        option(.baseball, "Baseball"),
+        option(.basketball, "Basketball"),
+        option(.bowling, "Bowling"),
+        option(.boxing, "Boxing"),
+        option(.climbing, "Climbing"),
+        option(.cricket, "Cricket"),
+        option(.crossTraining, "Cross Training"),
+        option(.curling, "Curling"),
+        option(.cycling, "Cycling"),
+        option(.elliptical, "Elliptical"),
+        option(.equestrianSports, "Equestrian Sports"),
+        option(.fencing, "Fencing"),
+        option(.fishing, "Fishing"),
+        option(.functionalStrengthTraining, "Functional Strength Training"),
+        option(.golf, "Golf"),
+        option(.gymnastics, "Gymnastics"),
+        option(.handball, "Handball"),
+        option(.hiking, "Hiking"),
+        option(.hockey, "Hockey"),
+        option(.hunting, "Hunting"),
+        option(.lacrosse, "Lacrosse"),
+        option(.martialArts, "Martial Arts"),
+        option(.mindAndBody, "Mind and Body"),
+        option(.paddleSports, "Paddle Sports"),
+        option(.play, "Play"),
+        option(.preparationAndRecovery, "Preparation and Recovery"),
+        option(.racquetball, "Racquetball"),
+        option(.rowing, "Rowing"),
+        option(.rugby, "Rugby"),
+        option(.running, "Running"),
+        option(.sailing, "Sailing"),
+        option(.skatingSports, "Skating Sports"),
+        option(.snowSports, "Snow Sports"),
+        option(.soccer, "Soccer"),
+        option(.softball, "Softball"),
+        option(.squash, "Squash"),
+        option(.stairClimbing, "Stair Climbing"),
+        option(.surfingSports, "Surfing Sports"),
+        option(.swimming, "Swimming"),
+        option(.tableTennis, "Table Tennis"),
+        option(.tennis, "Tennis"),
+        option(.trackAndField, "Track and Field"),
+        option(.traditionalStrengthTraining, "Traditional Strength Training"),
+        option(.volleyball, "Volleyball"),
+        option(.walking, "Walking"),
+        option(.waterFitness, "Water Fitness"),
+        option(.waterPolo, "Water Polo"),
+        option(.waterSports, "Water Sports"),
+        option(.wrestling, "Wrestling"),
+        option(.yoga, "Yoga"),
+        option(.barre, "Barre"),
+        option(.coreTraining, "Core Training"),
+        option(.crossCountrySkiing, "Cross Country Skiing"),
+        option(.downhillSkiing, "Downhill Skiing"),
+        option(.flexibility, "Flexibility"),
+        option(.highIntensityIntervalTraining, "High Intensity Interval Training"),
+        option(.jumpRope, "Jump Rope"),
+        option(.kickboxing, "Kickboxing"),
+        option(.pilates, "Pilates"),
+        option(.snowboarding, "Snowboarding"),
+        option(.stairs, "Stairs"),
+        option(.stepTraining, "Step Training"),
+        option(.wheelchairWalkPace, "Wheelchair Walk Pace"),
+        option(.wheelchairRunPace, "Wheelchair Run Pace"),
+        option(.taiChi, "Tai Chi"),
+        option(.mixedCardio, "Mixed Cardio"),
+        option(.handCycling, "Hand Cycling"),
+        option(.discSports, "Disc Sports"),
+        option(.fitnessGaming, "Fitness Gaming"),
+        option(.cardioDance, "Cardio Dance"),
+        option(.socialDance, "Social Dance"),
+        option(.pickleball, "Pickleball"),
+        option(.cooldown, "Cooldown"),
+        option(.swimBikeRun, "Swim Bike Run"),
+        option(.transition, "Transition"),
+        option(.underwaterDiving, "Underwater Diving"),
+        option(.other, "Other")
+    ]
+
+    static let titles: [String] = all.map(\.title)
+
+    static func displayName(for activityType: HKWorkoutActivityType) -> String {
+        all.first(where: { $0.healthKitType == activityType })?.title ?? "Other"
+    }
+
+    private static func option(_ type: HKWorkoutActivityType, _ title: String) -> ActivityOption {
+        ActivityOption(healthKitType: type, title: title)
+    }
+}
+
 struct HealthRefreshPayload {
     let completedWorkouts: [CompletedWorkoutSummary]
     let detectedActivityTypes: [String]
@@ -95,12 +198,14 @@ final class HealthKitService {
     }
 
     private static func makeSummary(from workout: HKWorkout) -> CompletedWorkoutSummary {
-        CompletedWorkoutSummary(
-            id: UUID(),
+        let activityType = displayName(for: workout.workoutActivityType)
+        return CompletedWorkoutSummary(
+            id: workout.uuid,
             date: workout.startDate,
             durationMinutes: max(Int(workout.duration.rounded() / 60), 1),
-            locationName: "Apple Health",
-            summary: displayName(for: workout.workoutActivityType)
+            locationName: "",
+            activityType: activityType,
+            summary: activityType
         )
     }
 
@@ -132,42 +237,7 @@ final class HealthKitService {
     ]
 
     private static func displayName(for activityType: HKWorkoutActivityType) -> String {
-        switch activityType {
-        case .running:
-            "Running"
-        case .cycling:
-            "Cycling"
-        case .hiking:
-            "Hiking"
-        case .walking:
-            "Walking"
-        case .swimming:
-            "Swimming"
-        case .rowing:
-            "Rowing"
-        case .yoga:
-            "Yoga"
-        case .mixedCardio:
-            "Mixed Cardio"
-        case .elliptical:
-            "Elliptical"
-        case .stairClimbing:
-            "Stair Climbing"
-        case .downhillSkiing:
-            "Skiing"
-        case .snowboarding:
-            "Snowboarding"
-        case .surfingSports:
-            "Surfing"
-        case .paddleSports:
-            "Paddling"
-        case .traditionalStrengthTraining:
-            "Traditional Strength Training"
-        case .functionalStrengthTraining:
-            "Functional Strength Training"
-        default:
-            "Other Activity"
-        }
+        WorkoutActivityCatalog.displayName(for: activityType)
     }
 }
 
@@ -175,29 +245,32 @@ final class HealthKitService {
 final class HealthSyncController: ObservableObject {
     private let healthKitService = HealthKitService()
 
+    var isHealthDataAvailable: Bool {
+        healthKitService.isHealthDataAvailable
+    }
+
+    func authorizationStatus() -> HKAuthorizationStatus {
+        healthKitService.authorizationStatus()
+    }
+
     func refreshOnLaunch(using store: AppStore) async {
         guard healthKitService.isHealthDataAvailable else {
             store.setHealthSyncState(.failed("Health unavailable"))
             return
         }
 
-        switch healthKitService.authorizationStatus() {
-        case .notDetermined:
+        if healthKitService.authorizationStatus() == .notDetermined {
             store.setHealthSyncState(.notConnected)
-        case .sharingDenied:
-            store.setHealthSyncState(.failed("Health access denied"))
-        case .sharingAuthorized:
-            await refresh(using: store)
-        @unknown default:
-            store.setHealthSyncState(.failed("Unknown Health status"))
+            return
         }
+
+        await refresh(using: store)
     }
 
     func connectAndRefresh(using store: AppStore) async {
         do {
             store.setHealthSyncState(.refreshing)
             try await healthKitService.requestAuthorization()
-            store.setHealthSyncState(.connected)
             await refresh(using: store)
         } catch {
             store.setHealthSyncState(.failed(error.localizedDescription))

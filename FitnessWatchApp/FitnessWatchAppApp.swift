@@ -23,67 +23,146 @@ private struct WatchRootView: View {
     @EnvironmentObject private var store: AppStore
     @State private var phase: WorkoutPhase = .start
     @State private var selectedExerciseIndex = 0
-    @State private var selectedLocationName = ""
+    @State private var selectedLocationID: UUID?
     @State private var selectedDuration = 20
+    @State private var selectedManualFocusAreas: Set<ExerciseBodyArea> = []
+    @State private var lastSavedExerciseCount = 0
+    @State private var didSaveWorkout = false
 
     var body: some View {
         Group {
             switch phase {
             case .start:
                 StartWorkoutView(
+                    focusSummary: startFocusSummary,
                     locationName: currentLocationName,
                     duration: selectedDuration,
-                    onStart: { phase = .currentExercise },
+                    onStart: startWorkout,
                     onEdit: { phase = .editDefaults }
                 )
             case .editDefaults:
                 EditDefaultsView(
-                    locations: store.locations.map(\.name),
-                    selectedLocationName: $selectedLocationName,
+                    locations: store.locations,
+                    selectedLocationID: $selectedLocationID,
                     selectedDuration: $selectedDuration,
+                    selectedManualFocusAreas: $selectedManualFocusAreas,
                     onSave: { phase = .start }
                 )
             case .currentExercise:
-                CurrentExerciseView(
-                    exercise: currentExercise,
-                    progressText: "\(selectedExerciseIndex + 1) / \(store.currentWorkout.exercises.count)",
-                    onComplete: completeExercise,
-                    onOverride: skipExercise,
-                    onEndWorkout: { phase = .workoutComplete }
-                )
+                if let currentExercise {
+                    CurrentExerciseView(
+                        exercise: currentExercise.plannedExercise,
+                        progressText: "\(selectedExerciseIndex + 1) / \(trackedExerciseCount)",
+                        completedCountText: "\(store.completedTrackedExerciseCount) checked",
+                        onComplete: completeExercise,
+                        onSkip: skipExercise,
+                        onEndWorkout: finishWorkout
+                    )
+                }
             case .workoutComplete:
                 WorkoutCompleteView(
                     locationName: currentLocationName,
-                    duration: selectedDuration,
+                    savedExerciseCount: lastSavedExerciseCount,
+                    didSaveWorkout: didSaveWorkout,
                     onDone: resetWorkout
                 )
             }
         }
         .onAppear {
-            selectedLocationName = store.defaultLocation?.name ?? store.locations.first?.name ?? "No Location"
-            selectedDuration = store.todayRoutineDay?.defaultDurationMinutes ?? store.currentWorkout.plannedDurationMinutes
+            selectedLocationID = selectedLocationID ?? store.defaultLocation?.id ?? store.locations.first?.id
+            selectedDuration = store.todayRoutineDay?.defaultDurationMinutes ?? 20
+            if store.trackedWorkoutSession != nil {
+                phase = .currentExercise
+            }
         }
     }
 
-    private var currentExercise: PlannedExercise {
-        let safeIndex = min(selectedExerciseIndex, max(store.currentWorkout.exercises.count - 1, 0))
-        return store.currentWorkout.exercises[safeIndex]
+    private var trackedExerciseCount: Int {
+        store.trackedWorkoutSession?.exercises.count ?? 0
+    }
+
+    private var startFocusSummary: String {
+        if let routineDay = store.todayRoutineDay {
+            return routineDay.focusSummary
+        }
+
+        let selectedAreas = ExerciseBodyArea.allCases.filter { selectedManualFocusAreas.contains($0) }
+        return selectedAreas.isEmpty ? "Pick body parts in Edit" : selectedAreas.map(\.title).joined(separator: ", ")
+    }
+
+    private var currentExercise: TrackedExerciseState? {
+        guard let session = store.trackedWorkoutSession, !session.exercises.isEmpty else { return nil }
+        let safeIndex = min(selectedExerciseIndex, max(session.exercises.count - 1, 0))
+        return session.exercises[safeIndex]
     }
 
     private var currentLocationName: String {
-        selectedLocationName.isEmpty ? (store.defaultLocation?.name ?? "No Location") : selectedLocationName
+        guard
+            let selectedLocationID,
+            let location = store.locations.first(where: { $0.id == selectedLocationID })
+        else {
+            return "No Location"
+        }
+
+        return location.name
+    }
+
+    private func startWorkout() {
+        if let routineDay = store.todayRoutineDay {
+            _ = store.startTrackedWorkout(
+                for: routineDay,
+                targetDate: .now,
+                locationID: selectedLocationID,
+                durationMinutes: selectedDuration
+            )
+        } else {
+            let selectedAreas = ExerciseBodyArea.allCases.filter { selectedManualFocusAreas.contains($0) }
+            guard !selectedAreas.isEmpty else {
+                phase = .editDefaults
+                return
+            }
+
+            _ = store.startTrackedWorkout(
+                focusAreas: selectedAreas,
+                targetDate: .now,
+                locationID: selectedLocationID,
+                durationMinutes: selectedDuration
+            )
+        }
+        selectedExerciseIndex = 0
+        phase = trackedExerciseCount > 0 ? .currentExercise : .start
     }
 
     private func completeExercise() {
-        if selectedExerciseIndex < store.currentWorkout.exercises.count - 1 {
-            selectedExerciseIndex += 1
-        } else {
-            phase = .workoutComplete
+        guard let currentExercise else { return }
+        if !currentExercise.isCompleted {
+            store.toggleTrackedExercise(id: currentExercise.id)
         }
+        advanceExercise()
     }
 
     private func skipExercise() {
-        completeExercise()
+        advanceExercise()
+    }
+
+    private func advanceExercise() {
+        if selectedExerciseIndex < trackedExerciseCount - 1 {
+            selectedExerciseIndex += 1
+        } else {
+            finishWorkout()
+        }
+    }
+
+    private func finishWorkout() {
+        if let pendingWorkout = store.finalizeTrackedWorkoutSession() {
+            lastSavedExerciseCount = pendingWorkout.exerciseDetails.count
+            didSaveWorkout = true
+        } else {
+            store.discardTrackedWorkoutSession()
+            lastSavedExerciseCount = 0
+            didSaveWorkout = false
+        }
+        phase = .workoutComplete
     }
 
     private func resetWorkout() {
@@ -93,6 +172,7 @@ private struct WatchRootView: View {
 }
 
 private struct StartWorkoutView: View {
+    let focusSummary: String
     let locationName: String
     let duration: Int
     let onStart: () -> Void
@@ -100,15 +180,14 @@ private struct StartWorkoutView: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            Text("Start Workout")
+            Text("Track")
                 .font(.headline)
-
-            VStack(spacing: 4) {
-                Text(locationName)
-                Text("\(duration) min")
-                    .foregroundStyle(.secondary)
-            }
-            .font(.caption)
+            Text(focusSummary)
+                .font(.caption)
+                .multilineTextAlignment(.center)
+            Text("\(duration) min at \(locationName)")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
 
             Button("Start", action: onStart)
                 .buttonStyle(.borderedProminent)
@@ -121,22 +200,41 @@ private struct StartWorkoutView: View {
 }
 
 private struct EditDefaultsView: View {
-    let locations: [String]
-    @Binding var selectedLocationName: String
+    let locations: [LocationItem]
+    @Binding var selectedLocationID: UUID?
     @Binding var selectedDuration: Int
+    @Binding var selectedManualFocusAreas: Set<ExerciseBodyArea>
     let onSave: () -> Void
 
     var body: some View {
         Form {
-            Picker("Location", selection: $selectedLocationName) {
-                ForEach(locations, id: \.self) { location in
-                    Text(location).tag(location)
+            Picker("Location", selection: $selectedLocationID) {
+                ForEach(locations) { location in
+                    Text(location.name).tag(Optional(location.id))
                 }
             }
 
             Picker("Duration", selection: $selectedDuration) {
                 ForEach([10, 15, 20, 30, 45], id: \.self) { duration in
                     Text("\(duration) min").tag(duration)
+                }
+            }
+
+            Section("Manual Focus") {
+                ForEach(ExerciseBodyArea.allCases) { area in
+                    Toggle(
+                        area.title,
+                        isOn: Binding(
+                            get: { selectedManualFocusAreas.contains(area) },
+                            set: { isSelected in
+                                if isSelected {
+                                    selectedManualFocusAreas.insert(area)
+                                } else {
+                                    selectedManualFocusAreas.remove(area)
+                                }
+                            }
+                        )
+                    )
                 }
             }
 
@@ -149,14 +247,18 @@ private struct EditDefaultsView: View {
 private struct CurrentExerciseView: View {
     let exercise: PlannedExercise
     let progressText: String
+    let completedCountText: String
     let onComplete: () -> Void
-    let onOverride: () -> Void
+    let onSkip: () -> Void
     let onEndWorkout: () -> Void
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
                 Text(progressText)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Text(completedCountText)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
 
@@ -167,19 +269,13 @@ private struct CurrentExerciseView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Timer: 00:00")
-                    Text("Heart Rate: --")
-                }
-                .font(.caption2)
-
-                Button("Complete", action: onComplete)
+                Button("Did It", action: onComplete)
                     .buttonStyle(.borderedProminent)
 
-                Button("Override", action: onOverride)
+                Button("Skip", action: onSkip)
                     .buttonStyle(.bordered)
 
-                Button("End Workout", action: onEndWorkout)
+                Button("Finish", action: onEndWorkout)
                     .tint(.red)
             }
             .padding()
@@ -189,23 +285,34 @@ private struct CurrentExerciseView: View {
 
 private struct WorkoutCompleteView: View {
     let locationName: String
-    let duration: Int
+    let savedExerciseCount: Int
+    let didSaveWorkout: Bool
     let onDone: () -> Void
 
     var body: some View {
         VStack(spacing: 10) {
-            Text("Workout Saved")
+            Text(didSaveWorkout ? "Track Saved" : "Nothing Saved")
                 .font(.headline)
             Text(locationName)
                 .font(.caption)
-            Text("\(duration) min")
+            Text(messageText)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
 
             Button("Done", action: onDone)
                 .buttonStyle(.borderedProminent)
         }
         .padding()
+    }
+
+    private var messageText: String {
+        guard didSaveWorkout else {
+            return "Check at least one exercise next time to save this session."
+        }
+
+        let exerciseSummary = savedExerciseCount == 1 ? "1 exercise" : "\(savedExerciseCount) exercises"
+        return "Saved \(exerciseSummary). It will attach when the matching Apple Health workout appears on iPhone."
     }
 }
 

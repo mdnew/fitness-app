@@ -289,11 +289,10 @@ It should not try to solve:
 Every app launch on `iPhone` should:
 
 1. refresh Apple Health workout history
-2. detect any new activity types
-3. append newly detected activities to the bottom of the detected activities review list
-4. rebuild goals if needed
-5. rebuild recommendation outputs
-6. sync the latest workout snapshot to watch
+2. refresh imported workout types in `History`
+3. leave the goals list unchanged until the user explicitly adds something
+4. rebuild recommendation outputs from the current explicit goals list
+5. sync the latest workout snapshot to watch
 
 This keeps the phone current without silently disturbing user priority order.
 
@@ -365,8 +364,8 @@ Deliverables:
 
 - Health permissions flow
 - import all available workout history
-- detect activity types from history
-- append new detected activities to the bottom of the detected activities review list
+- retain workout activity types in saved history
+- support adding a workout type from `History` into the ranked goals list
 
 ### Milestone 4: Planning Surfaces On iPhone
 

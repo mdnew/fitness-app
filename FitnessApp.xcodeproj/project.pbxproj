@@ -279,7 +279,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.mnew.FitnessApp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mnew.FitnessApp.healthreset;
 				PRODUCT_NAME = FitnessApp;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -304,7 +304,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.mnew.FitnessApp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mnew.FitnessApp.healthreset;
 				PRODUCT_NAME = FitnessApp;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -387,7 +387,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.mnew.FitnessApp.watchkitapp.watchkitextension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mnew.FitnessApp.healthreset.watchkitapp.watchkitextension;
 				PRODUCT_NAME = FitnessWatchAppExtension;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -401,9 +401,9 @@
 			buildSettings = {
 				DEVELOPMENT_TEAM = MPZPWEMR37;
 				INFOPLIST_KEY_CFBundleDisplayName = Fitness;
-				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.mnew.FitnessApp;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.mnew.FitnessApp.healthreset;
 				ONLY_ACTIVE_ARCH = NO;
-				PRODUCT_BUNDLE_IDENTIFIER = com.mnew.FitnessApp.watchkitapp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mnew.FitnessApp.healthreset.watchkitapp;
 				PRODUCT_NAME = FitnessWatchApp;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -424,7 +424,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.mnew.FitnessApp.watchkitapp.watchkitextension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mnew.FitnessApp.healthreset.watchkitapp.watchkitextension;
 				PRODUCT_NAME = FitnessWatchAppExtension;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -438,9 +438,9 @@
 			buildSettings = {
 				DEVELOPMENT_TEAM = MPZPWEMR37;
 				INFOPLIST_KEY_CFBundleDisplayName = Fitness;
-				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.mnew.FitnessApp;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.mnew.FitnessApp.healthreset;
 				ONLY_ACTIVE_ARCH = NO;
-				PRODUCT_BUNDLE_IDENTIFIER = com.mnew.FitnessApp.watchkitapp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mnew.FitnessApp.healthreset.watchkitapp;
 				PRODUCT_NAME = FitnessWatchApp;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
