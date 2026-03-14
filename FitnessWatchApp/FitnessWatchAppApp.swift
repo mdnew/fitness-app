@@ -36,10 +36,12 @@ private struct WatchRootView: View {
     @State private var totalExerciseDuration: TimeInterval = 0
     @State private var hasActiveWorkout: Bool = false
     @State private var completedExercises: [WatchCompletedExercise] = []
+    @State private var isShowingOtherExercisePicker = false
 
     var body: some View {
-        switch phase {
-        case .chooseActivity:
+        Group {
+            switch phase {
+            case .chooseActivity:
             VStack(spacing: 0) {
                 ChooseActivityView(
                     onSelectStrength: {
@@ -80,6 +82,7 @@ private struct WatchRootView: View {
             ChooseExerciseView(
                 activityType: selectedActivityType,
                 exercises: suggestedExercises,
+                completedExerciseTitles: Set(completedExercises.map(\.title)),
                 totalExerciseDuration: totalExerciseDuration,
                 onSelectExercise: { exercise in
                     activeExercise = exercise
@@ -88,6 +91,7 @@ private struct WatchRootView: View {
                     }
                     phase = .exerciseTimer
                 },
+                onTapOther: { isShowingOtherExercisePicker = true },
                 onFinish: {
                     guard hasActiveWorkout else {
                         resetToStart()
@@ -117,6 +121,16 @@ private struct WatchRootView: View {
                     resetToStart()
                 }
             )
+            .sheet(isPresented: $isShowingOtherExercisePicker) {
+                WatchOtherExercisePicker(
+                    exercises: otherExercisesForBodyParts,
+                    onSelect: { exercise in
+                        suggestedExercises.append(exercise)
+                        isShowingOtherExercisePicker = false
+                    },
+                    onCancel: { isShowingOtherExercisePicker = false }
+                )
+            }
 
         case .exerciseTimer:
             if let exercise = activeExercise {
@@ -142,6 +156,10 @@ private struct WatchRootView: View {
                     }
                 )
             }
+        }
+        }
+        .onAppear {
+            workoutSender.setStore(store)
         }
     }
 
@@ -177,7 +195,7 @@ private struct WatchRootView: View {
         suggestedExercises = store.recommendedExercises(
             for: temporaryRoutine,
             targetDate: .now,
-            locationID: nil,
+            locationID: selectedLocationID,
             desiredCount: 6,
             priorPlannedExerciseTitles: []
         )
@@ -224,6 +242,14 @@ private struct WatchRootView: View {
         }
     }
 
+    private var otherExercisesForBodyParts: [ExerciseLibraryItem] {
+        let areas = Set(selectedBodyParts)
+        guard !areas.isEmpty else { return store.exerciseLibrary }
+        return store.exerciseLibrary.filter { exercise in
+            !Set(exercise.primaryMuscles).isDisjoint(with: areas)
+        }
+    }
+
 }
 
 // MARK: - Subviews
@@ -234,7 +260,7 @@ private struct ChooseActivityView: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            Text("FITNESS")
+            Text("Training Day")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.orange)
 
@@ -250,13 +276,16 @@ private struct ChooseActivityView: View {
                         .fill(Color.blue)
                         .overlay(
                             HStack {
-                                Text("🏋️‍♂️")
+                                Image(systemName: "figure.strengthtraining.traditional")
+                                    .font(.body)
                                 Text("Strength Training")
-                                    .font(.body.weight(.semibold))
+                                    .font(.callout.weight(.semibold))
                             }
                             .foregroundStyle(.white)
+                            .padding(.vertical, 14)
+                            .padding(.horizontal, 6)
                         )
-                        .frame(height: 48)
+                        .frame(height: 56)
                 }
                 .buttonStyle(.plain)
 
@@ -265,13 +294,16 @@ private struct ChooseActivityView: View {
                         .fill(Color.blue)
                         .overlay(
                             HStack {
-                                Text("🔥")
+                                Image(systemName: "figure.core.training")
+                                    .font(.body)
                                 Text("Core Training")
-                                    .font(.body.weight(.semibold))
+                                    .font(.callout.weight(.semibold))
                             }
                             .foregroundStyle(.white)
+                            .padding(.vertical, 14)
+                            .padding(.horizontal, 6)
                         )
-                        .frame(height: 48)
+                        .frame(height: 56)
                 }
                 .buttonStyle(.plain)
             }
@@ -329,6 +361,7 @@ private struct TargetBodyPartsView: View {
                     VStack(spacing: 6) {
                         Button("Continue", action: onContinue)
                             .buttonStyle(.borderedProminent)
+                            .tint(.blue)
 
                         Button("Cancel", action: onCancel)
                             .buttonStyle(.bordered)
@@ -339,11 +372,45 @@ private struct TargetBodyPartsView: View {
     }
 }
 
+private let watchAccent = Color.gray
+
+private struct ChooseExerciseRowLabel: View {
+    let title: String
+    let isDone: Bool
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .fill(isDone ? Color.clear : watchAccent.opacity(0.3))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(watchAccent, lineWidth: isDone ? 2 : 0)
+            )
+            .overlay(
+                HStack {
+                    Text(title)
+                        .font(.caption.weight(.semibold))
+                        .multilineTextAlignment(.leading)
+                        .foregroundStyle(isDone ? Color.primary : Color.white)
+                    Spacer()
+                    if isDone {
+                        Image(systemName: "checkmark")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(watchAccent)
+                    }
+                }
+                .padding(10)
+            )
+            .frame(height: 52)
+    }
+}
+
 private struct ChooseExerciseView: View {
     let activityType: String
     let exercises: [ExerciseLibraryItem]
+    let completedExerciseTitles: Set<String>
     let totalExerciseDuration: TimeInterval
     let onSelectExercise: (ExerciseLibraryItem) -> Void
+    let onTapOther: () -> Void
     let onFinish: () -> Void
     let onCancel: () -> Void
 
@@ -372,21 +439,36 @@ private struct ChooseExerciseView: View {
                         Button {
                             onSelectExercise(exercise)
                         } label: {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(Color.green)
-                                .overlay(
-                                    HStack {
-                                        Text(exercise.name)
-                                            .font(.caption2.weight(.semibold))
-                                            .multilineTextAlignment(.leading)
-                                        Spacer()
-                                    }
-                                    .padding(8)
-                                )
-                                .frame(height: 44)
+                            ChooseExerciseRowLabel(
+                                title: exercise.name,
+                                isDone: completedExerciseTitles.contains(exercise.name)
+                            )
                         }
                         .buttonStyle(.plain)
                     }
+
+                    Button(action: onTapOther) {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(watchAccent.opacity(0.3))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .strokeBorder(watchAccent, lineWidth: 0)
+                            )
+                            .overlay(
+                                HStack {
+                                    Text("Other")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(Color.white)
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.body.weight(.semibold))
+                                        .foregroundStyle(Color.white)
+                                }
+                                .padding(10)
+                            )
+                            .frame(height: 52)
+                    }
+                    .buttonStyle(.plain)
                 }
 
                 Spacer(minLength: 4)
@@ -394,6 +476,7 @@ private struct ChooseExerciseView: View {
                 VStack(spacing: 6) {
                     Button("Finish", action: onFinish)
                         .buttonStyle(.borderedProminent)
+                        .tint(.blue)
 
                     Button("Cancel", action: onCancel)
                         .buttonStyle(.bordered)
@@ -414,6 +497,60 @@ private struct ChooseExerciseView: View {
             return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
         } else {
             return String(format: "%02d:%02d.%02d", minutes, seconds, hundredths)
+        }
+    }
+}
+
+private struct WatchOtherExercisePicker: View {
+    let exercises: [ExerciseLibraryItem]
+    let onSelect: (ExerciseLibraryItem) -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("OTHER")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.blue)
+                Text("Choose an exercise from your catalog")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                Divider()
+
+                VStack(spacing: 8) {
+                    ForEach(exercises, id: \.id) { exercise in
+                        Button {
+                            onSelect(exercise)
+                        } label: {
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(watchAccent.opacity(0.3))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .strokeBorder(watchAccent, lineWidth: 0)
+                                )
+                                .overlay(
+                                    HStack {
+                                        Text(exercise.name)
+                                            .font(.caption.weight(.semibold))
+                                            .multilineTextAlignment(.leading)
+                                            .foregroundStyle(Color.white)
+                                        Spacer()
+                                    }
+                                    .padding(10)
+                                )
+                                .frame(height: 52)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                Spacer(minLength: 8)
+
+                Button("Cancel", action: onCancel)
+                    .buttonStyle(.bordered)
+            }
+            .padding()
         }
     }
 }
@@ -443,7 +580,7 @@ private struct ExerciseTimerView: View {
                 onFinish(max(elapsed, 0))
             }
             .buttonStyle(.borderedProminent)
-            .tint(.green)
+            .tint(.blue)
 
             Button("Cancel", action: onCancel)
                 .buttonStyle(.bordered)
@@ -565,6 +702,15 @@ private enum PendingWorkoutsStore {
 @MainActor
 final class WatchWorkoutSender: NSObject, ObservableObject {
     @Published private(set) var pendingWorkoutCount: Int = 0
+    weak var store: AppStore?
+
+    /// Call once when the Watch app has the store (e.g. from root view .onAppear) so received snapshots can be applied.
+    func setStore(_ store: AppStore) {
+        self.store = store
+        if WCSession.default.activationState == .activated {
+            applyReceivedContext(WCSession.default.receivedApplicationContext)
+        }
+    }
 
     override init() {
         super.init()
@@ -632,8 +778,10 @@ extension WatchWorkoutSender: WCSessionDelegate {
         error: Error?
     ) {
         guard activationState == .activated else { return }
+        let snapshotData = session.receivedApplicationContext["snapshot"] as? Data
         Task { @MainActor [weak self] in
             self?.resendPendingWorkouts()
+            self?.applyReceivedSnapshotData(snapshotData)
         }
     }
 
@@ -645,5 +793,26 @@ extension WatchWorkoutSender: WCSessionDelegate {
         Task { @MainActor [weak self] in
             self?.removePending(ackId: ackId)
         }
+    }
+
+    nonisolated(unsafe) func session(
+        _ session: WCSession,
+        didReceiveApplicationContext applicationContext: [String: Any]
+    ) {
+        let snapshotData = applicationContext["snapshot"] as? Data
+        Task { @MainActor [weak self] in
+            self?.applyReceivedSnapshotData(snapshotData)
+        }
+    }
+
+    private func applyReceivedContext(_ applicationContext: [String: Any]) {
+        let data = applicationContext["snapshot"] as? Data
+        applyReceivedSnapshotData(data)
+    }
+
+    private func applyReceivedSnapshotData(_ data: Data?) {
+        guard let data,
+              let snapshot = try? JSONDecoder().decode(AppSnapshot.self, from: data) else { return }
+        store?.apply(snapshot: snapshot)
     }
 }

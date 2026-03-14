@@ -24,10 +24,10 @@ targets:
         PRODUCT_NAME: FitnessApp
         TARGETED_DEVICE_FAMILY: 1
         CODE_SIGN_ENTITLEMENTS: FitnessApp/FitnessApp.entitlements
-        INFOPLIST_KEY_CFBundleDisplayName: Fitness
+        INFOPLIST_KEY_CFBundleDisplayName: "Training Day"
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_NSHealthShareUsageDescription: Fitness uses your Apple Health workout history to detect recurring activities and improve planning.
-        INFOPLIST_KEY_NSHealthUpdateUsageDescription: Fitness writes completed strength workouts to Apple Health to keep your workout history complete.
+        INFOPLIST_KEY_NSHealthShareUsageDescription: "Training Day uses your Apple Health workout history to detect recurring activities and improve planning."
+        INFOPLIST_KEY_NSHealthUpdateUsageDescription: "Training Day writes completed strength workouts to Apple Health to keep your workout history complete."
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone:
           - UIInterfaceOrientationPortrait
@@ -42,7 +42,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.mnew.FitnessApp.healthreset.watchkitapp
         PRODUCT_NAME: FitnessWatchApp
-        INFOPLIST_KEY_CFBundleDisplayName: Fitness
+        INFOPLIST_KEY_CFBundleDisplayName: "Training Day"
         INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.mnew.FitnessApp.healthreset
         ONLY_ACTIVE_ARCH: NO
     dependencies:

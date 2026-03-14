@@ -179,7 +179,7 @@ struct RoutineDay: Identifiable, Hashable, Codable {
     var defaultDurationMinutes: Int?
 
     var focusSummary: String {
-        guard !focusAreas.isEmpty else { return "No targets selected" }
+        guard !focusAreas.isEmpty else { return "" }
         return focusAreas.map(\.title).joined(separator: ", ")
     }
 
@@ -255,7 +255,7 @@ struct RoutineActivity: Identifiable, Hashable, Codable {
     var isTrainingTemplate: Bool
 
     var focusSummary: String {
-        guard !focusAreas.isEmpty else { return "No targets selected" }
+        guard !focusAreas.isEmpty else { return "" }
         return focusAreas.map(\.title).joined(separator: ", ")
     }
 
@@ -951,8 +951,11 @@ final class AppStore: ObservableObject {
             exercise("Back Squat", .squat, [.barbell], [.legs, .glutes], ["running", "cycling", "field sports"], .intermediate, false, "Classic bilateral lower-body strength builder.", "Set the bar on your upper back, brace your core, squat to comfortable depth, then drive back up."),
             exercise("Step-Up", .singleLeg, [.dumbbells, .bench], [.legs, .glutes], ["running", "hiking", "skiing"], .beginner, true, "Low-complexity single-leg option with clear carryover to climbing and hiking.", "Step onto the bench with one foot, drive through that leg to stand, then return under control."),
             exercise("Reverse Lunge", .singleLeg, [.dumbbells], [.legs, .glutes], ["running", "court sports", "surfing"], .beginner, true, "Accessible unilateral lower-body work.", "Step one leg backward, lower both knees, then push through the front foot to return to standing."),
+            exercise("Regular Lunge", .singleLeg, [.dumbbells], [.legs, .glutes], ["running", "court sports", "hiking", "surfing"], .beginner, true, "Forward lunge for unilateral lower-body strength and balance.", "Step one leg forward, lower your back knee toward the floor while keeping your front knee over your ankle, then push through the front foot to return to standing."),
             exercise("Hip Thrust", .hinge, [.barbell, .bench], [.glutes, .legs], ["running", "cycling", "surfing"], .intermediate, false, "Glute-focused bridge pattern.", "Rest your upper back on a bench, drive your hips up until your torso is level, then lower slowly."),
             exercise("Leg Curl", .hinge, [.machine], [.legs], ["running", "field sports"], .beginner, false, "Simple machine posterior-chain accessory.", "Set the pad above your heels, curl your heels toward you, pause, then return with control."),
+            exercise("Leg Press", .squat, [.machine], [.legs, .glutes], ["running", "cycling", "field sports"], .beginner, false, "Machine-based leg press for quad and glute strength without spinal loading.", "Sit with your back against the pad, feet on the platform. Press through your whole foot to extend your legs, then lower with control."),
+            exercise("Leg Extension", .squat, [.machine], [.legs], ["running", "field sports"], .beginner, false, "Machine quad isolation for knee extension.", "Sit with the pad against your ankles, extend your legs until straight, squeeze at the top, then lower with control."),
             exercise("Push-Up", .horizontalPush, [.bodyweight], [.chest, .triceps, .shoulders], ["general", "surfing"], .beginner, false, "Scalable upper-body push that works almost anywhere.", "Start in a straight plank, lower your chest toward the floor, then press back up without sagging."),
             exercise("Flat Barbell Bench Press", .horizontalPush, [.barbell, .bench], [.chest, .triceps, .shoulders], ["general", "surfing"], .beginner, false, "Standard flat barbell press for chest and triceps strength.", "Lower the bar to mid-chest with control, keep your shoulders set, then press straight up."),
             exercise("Incline Barbell Bench Press", .horizontalPush, [.barbell, .bench], [.chest, .shoulders, .triceps], ["general", "surfing"], .intermediate, false, "Upper-chest pressing variation using a barbell.", "Use an incline bench, lower the bar to your upper chest, then press it back above your shoulders."),
@@ -1734,7 +1737,7 @@ final class AppStore: ObservableObject {
             selectedExercises.append(contentsOf: candidates.filter { !selectedIDs.contains($0.id) })
         }
 
-        return Array(selectedExercises.prefix(selectionLimit))
+        return Array(selectedExercises.prefix(selectionLimit).shuffled())
     }
 
     private func candidateExercises(for routineActivity: RoutineActivity, locationID: UUID? = nil) -> [ExerciseLibraryItem] {
@@ -1861,8 +1864,8 @@ final class AppStore: ObservableObject {
             if lhsScore != rhsScore {
                 return lhsScore < rhsScore
             }
-
-            return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedDescending
+            // Break ties randomly so suggested exercises vary when many candidates have similar scores
+            return Bool.random()
         }
     }
 
@@ -2040,14 +2043,17 @@ final class AppStore: ObservableObject {
             return true
         }
 
-        let availableEquipment = Set(
-            equipmentSummary(for: location.equipmentIDs)
-                .split(separator: ",")
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
-        )
+        let availableEquipmentStrings = equipmentSummary(for: location.equipmentIDs)
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+        let availableSet = Set(availableEquipmentStrings)
 
         return exercise.requiredEquipment.allSatisfy { requirement in
-            requirement == .bodyweight || availableEquipment.contains(requirement.title.lowercased())
+            guard requirement != .bodyweight else { return true }
+            let key = requirement.title.lowercased()
+            // Exact match (e.g. "dumbbells") or catalog name contains requirement (e.g. "cable machine" for "cable")
+            return availableSet.contains(key)
+                || availableEquipmentStrings.contains { $0.contains(key) }
         }
     }
 

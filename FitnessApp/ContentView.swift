@@ -257,12 +257,12 @@ private struct RoutineScreen: View {
                 }
 
                 HStack {
-                    SectionTitle(title: "Recurring Plans")
+                    SectionTitle(title: "Recurring Activities")
                     Spacer()
                     Button {
                         isAddingRoutineActivity = true
                     } label: {
-                        Label("Add Recurring Plan", systemImage: "plus")
+                        Label("Add Recurring", systemImage: "plus")
                             .font(.subheadline.weight(.semibold))
                     }
                 }
@@ -297,7 +297,7 @@ private struct RoutineScreen: View {
             }
             .sheet(isPresented: $isAddingRoutineActivity) {
                 RoutineActivityEditorView(
-                    title: "Add Recurring Plan",
+                    title: "Add Recurring",
                     initialRoutineActivity: nil,
                     activityTypeOptions: routineActivityOptions,
                     isTrainingActivity: false,
@@ -391,9 +391,11 @@ private struct RoutineScreen: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(routineActivity.title)
                             .font(.headline)
-                        Text(routineActivity.focusSummary)
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.secondary)
+                        if !routineActivity.focusSummary.isEmpty {
+                            Text(routineActivity.focusSummary)
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.secondary)
+                        }
                     }
 
                     Spacer()
@@ -497,29 +499,23 @@ private struct ActivityScreen: View {
                                     EmptyCardMessage(message: "No upcoming sessions are scheduled from your plan yet.")
                                 }
                             } else {
-                                VStack(spacing: 10) {
+                                VStack(alignment: .leading, spacing: 10) {
                                     ForEach(upcomingWorkoutDayGroups) { group in
-                                        AppCard {
-                                            VStack(alignment: .leading, spacing: 12) {
-                                                Text(weekdayDateText(for: group.date))
-                                                    .font(.caption.weight(.semibold))
-                                                    .foregroundStyle(.secondary)
-                                                    .tracking(0.8)
+                                        VStack(alignment: .leading, spacing: 10) {
+                                            Text(weekdayDateText(for: group.date))
+                                                .font(.caption.weight(.semibold))
+                                                .foregroundStyle(.secondary)
+                                                .tracking(0.8)
 
-                                                ForEach(group.strengthEntries) { entry in
-                                                    UpcomingActivityRow(entry: entry)
+                                            ForEach(group.strengthEntries) { entry in
+                                                AppCard {
+                                                    SessionStyleActivityCard(entry: entry, dateLabel: sessionDateLabel(for: entry.date), compactVerticalPadding: true)
                                                 }
+                                            }
 
-                                                if !group.otherEntries.isEmpty {
-                                                    if !group.strengthEntries.isEmpty {
-                                                        Divider()
-                                                    }
-
-                                                    VStack(alignment: .leading, spacing: 8) {
-                                                        ForEach(group.otherEntries) { entry in
-                                                            UpcomingActivityRow(entry: entry)
-                                                        }
-                                                    }
+                                            ForEach(group.otherEntries) { entry in
+                                                AppCard {
+                                                    SessionStyleActivityCard(entry: entry, dateLabel: sessionDateLabel(for: entry.date), compactVerticalPadding: true)
                                                 }
                                             }
                                         }
@@ -530,33 +526,47 @@ private struct ActivityScreen: View {
                             SectionTitle(title: "Today")
                                 .id("activity-today-anchor")
 
-                            if todayEntries.isEmpty && todayWorkoutDayGroup == nil {
+                            if allTodayActivityEntries.isEmpty {
                                 AppCard {
                                     EmptyCardMessage(message: "Nothing is planned or imported for today yet.")
                                 }
                             } else {
-                                if !todayEntries.isEmpty {
-                                    VStack(spacing: 10) {
-                                        ForEach(todayEntries) { entry in
-                                            ActivityEntryCard(entry: entry)
+                                VStack(spacing: 10) {
+                                    ForEach(allTodayActivityEntries) { entry in
+                                        if entry.kind == .completed {
+                                            NavigationLink {
+                                                ActivityEntryDetailScreen(entry: entry)
+                                            } label: {
+                                                AppCard {
+                                                    SessionStyleActivityCard(entry: entry, dateLabel: sessionDateLabel(for: entry.date), showChevron: isStrengthOrCoreActivityTitle(entry.title))
+                                                }
+                                            }
+                                            .buttonStyle(.plain)
+                                        } else {
+                                            AppCard {
+                                                SessionStyleActivityCard(entry: entry, dateLabel: sessionDateLabel(for: entry.date))
+                                            }
                                         }
                                     }
-                                }
-
-                                if let todayWorkoutDayGroup {
-                                    pastWorkoutDayGroupCard(todayWorkoutDayGroup)
                                 }
                             }
 
                             SectionTitle(title: "Past")
-                            if pastWorkoutDayGroups.isEmpty {
+                            if allPastActivityEntries.isEmpty {
                                 AppCard {
                                     EmptyCardMessage(message: pastSessionsEmptyMessage)
                                 }
                             } else {
                                 VStack(spacing: 10) {
-                                    ForEach(pastWorkoutDayGroups) { group in
-                                        pastWorkoutDayGroupCard(group)
+                                    ForEach(allPastActivityEntries) { entry in
+                                        NavigationLink {
+                                            ActivityEntryDetailScreen(entry: entry)
+                                        } label: {
+                                            AppCard {
+                                                SessionStyleActivityCard(entry: entry, dateLabel: sessionDateLabel(for: entry.date), showChevron: isStrengthOrCoreActivityTitle(entry.title))
+                                            }
+                                        }
+                                        .buttonStyle(.plain)
                                     }
                                 }
                             }
@@ -584,40 +594,6 @@ private struct ActivityScreen: View {
         }
     }
 
-    @ViewBuilder
-    private func pastWorkoutDayGroupCard(_ group: PastWorkoutDayGroup) -> some View {
-        AppCard {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(weekdayDateText(for: group.date))
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .tracking(0.8)
-
-                ForEach(group.strengthWorkouts) { strengthWorkout in
-                    let entry = activityEntry(for: strengthWorkout)
-                    NavigationLink {
-                        ActivityEntryDetailScreen(entry: entry)
-                    } label: {
-                        CompletedActivityRow(entry: entry)
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                if !group.otherWorkouts.isEmpty {
-                    if !group.strengthWorkouts.isEmpty {
-                        Divider()
-                    }
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        ForEach(group.otherWorkouts) { workout in
-                            ReadOnlyWorkoutRow(workout: workout)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     private var futureEntries: [ActivityEntry] {
         let completedDays = Set(strengthWorkouts.map { calendar.startOfDay(for: $0.date) })
 
@@ -636,6 +612,7 @@ private struct ActivityScreen: View {
                     subtitle: scheduledActivity.focusSummary,
                     subtitleTint: .secondary,
                     detail: "",
+                    secondLineText: "—",
                     statusTitle: "Recurring",
                     statusTint: .blue,
                     exerciseDetails: [],
@@ -698,6 +675,7 @@ private struct ActivityScreen: View {
                     subtitle: subtitle,
                     subtitleTint: .secondary,
                     detail: "",
+                    secondLineText: "—",
                     statusTitle: "Training",
                     statusTint: .blue,
                     exerciseDetails: [],
@@ -724,6 +702,7 @@ private struct ActivityScreen: View {
                     subtitle: "",
                     subtitleTint: .secondary,
                     detail: "",
+                    secondLineText: "—",
                     statusTitle: "Planned",
                     statusTint: .blue,
                     exerciseDetails: [],
@@ -773,6 +752,7 @@ private struct ActivityScreen: View {
                     subtitle: scheduledActivity.focusSummary,
                     subtitleTint: .secondary,
                     detail: "",
+                    secondLineText: "—",
                     statusTitle: "",
                     statusTint: .blue,
                     exerciseDetails: [],
@@ -828,6 +808,22 @@ private struct ActivityScreen: View {
             .sorted { $0.date > $1.date }
     }
 
+    /// Today: planned entries first, then completed (strength then other) — one card per item.
+    private var allTodayActivityEntries: [ActivityEntry] {
+        let planned = todayEntries
+        let completed: [ActivityEntry] = (todayWorkoutDayGroup.map { group in
+            group.strengthWorkouts.map { activityEntry(for: $0) } + group.otherWorkouts.map { activityEntry(for: $0) }
+        }) ?? []
+        return planned + completed
+    }
+
+    /// Past: all completed workouts as flat list, most recent first.
+    private var allPastActivityEntries: [ActivityEntry] {
+        pastWorkoutDayGroups.flatMap { group in
+            group.strengthWorkouts.map { activityEntry(for: $0) } + group.otherWorkouts.map { activityEntry(for: $0) }
+        }
+    }
+
     private var strengthWorkouts: [CompletedWorkoutSummary] {
         importedWorkouts.filter(isStrengthOrCoreWorkout)
     }
@@ -848,6 +844,11 @@ private struct ActivityScreen: View {
         return t == "traditional strength training" || t == "core training"
     }
 
+    private func isStrengthOrCoreActivityTitle(_ title: String) -> Bool {
+        let t = title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return t == "traditional strength training" || t == "core training"
+    }
+
     private func isTraditionalStrengthActivityType(_ activityType: String) -> Bool {
         activityType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "traditional strength training"
     }
@@ -863,17 +864,31 @@ private struct ActivityScreen: View {
     }
 
     private func activityEntry(for workout: CompletedWorkoutSummary) -> ActivityEntry {
-        ActivityEntry(
+        let isStrengthOrCore = isStrengthOrCoreWorkout(workout)
+        let exerciseCount = workout.exerciseDetails.count
+        let listTitle: String
+        let statusTitle: String
+        if isStrengthOrCore {
+            listTitle = workout.activityType
+            statusTitle = exerciseCount > 0 ? "\(exerciseCount) Completed" : ""
+        } else {
+            listTitle = workout.activityType
+            statusTitle = "Completed"
+        }
+        let durationText = "\(workout.durationMinutes) min"
+        let completedSuffix = isStrengthOrCore && exerciseCount > 0 ? " • \(exerciseCount) completed" : ""
+        return ActivityEntry(
             id: workout.id.uuidString,
             kind: .completed,
             workoutID: workout.id,
             date: workout.date,
-            title: workout.activityType,
+            title: listTitle,
             subtitle: completedWorkoutSubtitle(for: workout),
-            subtitleTint: workout.exerciseDetails.isEmpty ? .secondary : .green,
+            subtitleTint: workout.exerciseDetails.isEmpty ? Color.secondary : Color.green,
             detail: completedWorkoutDetail(for: workout),
-            statusTitle: "Completed",
-            statusTint: .green,
+            secondLineText: durationText + completedSuffix,
+            statusTitle: statusTitle,
+            statusTint: Color.green,
             exerciseDetails: workout.exerciseDetails.map(Self.makeExerciseDetail),
             emptyExerciseMessage: "Exercise details were not recorded for this imported Apple Health workout."
         )
@@ -919,6 +934,14 @@ private struct ActivityScreen: View {
         }
 
         return date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day().year()).uppercased()
+    }
+
+    /// Date label for session-style card bottom right: "Today", "Tomorrow", "Yesterday", or "Wed, Mar 11, 2026".
+    private func sessionDateLabel(for date: Date) -> String {
+        if calendar.isDateInToday(date) { return "Today" }
+        if calendar.isDateInTomorrow(date) { return "Tomorrow" }
+        if calendar.isDateInYesterday(date) { return "Yesterday" }
+        return date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().year())
     }
 
     private var calendar: Calendar {
@@ -1063,13 +1086,14 @@ private struct TrackScreen: View {
                                 .fill(Color.blue)
                                 .overlay(
                                     HStack {
-                                        Text("🏋️‍♂️")
+                                        Image(systemName: "figure.strengthtraining.traditional")
+                                            .font(.title2)
                                         Text("Strength Training")
                                             .font(.body.weight(.semibold))
                                     }
                                     .foregroundStyle(.white)
                                 )
-                                .frame(height: 48)
+                                .frame(height: 56)
                         }
                         .buttonStyle(.plain)
 
@@ -1080,13 +1104,14 @@ private struct TrackScreen: View {
                                 .fill(Color.blue)
                                 .overlay(
                                     HStack {
-                                        Text("🔥")
+                                        Image(systemName: "figure.core.training")
+                                            .font(.title2)
                                         Text("Core Training")
                                             .font(.body.weight(.semibold))
                                     }
                                     .foregroundStyle(.white)
                                 )
-                                .frame(height: 48)
+                                .frame(height: 56)
                         }
                         .buttonStyle(.plain)
                     }
@@ -1842,6 +1867,8 @@ private struct ActivityEntry: Identifiable {
     let subtitle: String
     let subtitleTint: Color
     let detail: String
+    /// Shown on second line of session-style card: duration and optional "• N completed".
+    let secondLineText: String
     let statusTitle: String
     let statusTint: Color
     let exerciseDetails: [ActivityExerciseDetail]
@@ -1901,6 +1928,138 @@ private struct ActivityEntryCard: View {
 
 }
 
+/// SF Symbol name for activity type. Aligned with HealthKit / Fitness activity names (see e.g. https://philip-trauner.me/blog/post/fitness-ui-icons). Uses SF Symbols as the public alternative to FitnessUI asset names.
+private enum ActivityIcon {
+    static func symbol(for activityType: String) -> String {
+        let t = activityType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        switch t {
+        // Strength & core
+        case "traditional strength training": return "figure.strengthtraining.traditional"
+        case "core training": return "figure.core.training"
+        case "functional strength training": return "figure.strengthtraining.functional"
+        case "barre": return "figure.barre"
+        case "pilates": return "figure.pilates"
+        case "flexibility": return "figure.flexibility"
+        case "cooldown": return "figure.cooldown"
+        // Cardio & outdoor
+        case "pool swim", "swimming": return "figure.pool.swim"
+        case "running", "run": return "figure.run"
+        case "cycling", "bike": return "figure.outdoor.cycle"
+        case "walking", "walk": return "figure.walk"
+        case "elliptical": return "figure.elliptical"
+        case "rowing", "rower": return "figure.rower"
+        case "high intensity interval training", "hiit": return "figure.highintensity.intervaltraining"
+        case "mixed cardio", "mixed metabolic cardio training": return "figure.mixed.cardio"
+        // Water & snow (FitnessUI: surfing, swimopen, outdoorcycle, outdoorrun, etc.)
+        case "surfing sports", "surfing": return "figure.surfing"
+        case "downhill skiing", "cross country skiing", "snow sports", "skiing": return "figure.skiing.downhill"
+        case "snowboarding": return "figure.snowboarding"
+        case "water fitness", "water sports", "water polo": return "figure.pool.swim"
+        case "sailing", "paddle sports": return "figure.surfing"
+        // Mind & body
+        case "yoga": return "figure.yoga"
+        case "dance", "cardio dance", "social dance", "dance inspired training": return "figure.dance"
+        case "tai chi", "mind and body": return "figure.yoga"
+        case "preparation and recovery", "prep and recovery": return "figure.cooldown"
+        // Sports
+        case "climbing": return "figure.climbing"
+        case "golf": return "figure.golf"
+        case "tennis": return "figure.tennis"
+        case "table tennis": return "figure.tennis"
+        case "basketball": return "figure.basketball"
+        case "soccer": return "figure.soccer"
+        case "baseball": return "figure.baseball"
+        case "volleyball": return "figure.volleyball"
+        case "boxing": return "figure.boxing"
+        case "martial arts": return "figure.martial.arts"
+        case "kickboxing": return "figure.kickboxing"
+        case "wrestling": return "figure.wrestling"
+        case "hiking": return "figure.hiking"
+        case "stair climbing", "stairs", "step training": return "figure.stairs"
+        case "cross training": return "figure.mixed.cardio"
+        case "hand cycling": return "figure.outdoor.cycle"
+        case "jump rope": return "figure.highintensity.intervaltraining"
+        case "swim bike run", "transition": return "figure.mixed.cardio"
+        case "underwater diving": return "figure.pool.swim"
+        // Other sports (use SF Symbols that are widely available; fallback for rare ones)
+        case "american football", "australian football", "rugby": return "figure.football"
+        case "badminton", "pickleball", "racquetball", "squash": return "figure.tennis"
+        case "fishing": return "figure.fishing"
+        case "fitness gaming", "play": return "figure.play"
+        case "hockey": return "figure.hockey"
+        case "track and field": return "figure.run"
+        case "archery", "bowling", "curling", "disc sports", "equestrian sports", "fencing",
+             "gymnastics", "handball", "hunting", "lacrosse", "skating sports", "softball",
+             "wheelchair walk pace", "wheelchair run pace", "other": return "figure.mixed.cardio"
+        default: return "figure.mixed.cardio"
+        }
+    }
+}
+
+/// Session-style card: title on line 1; line 2 left = duration (Today/Past) or Training/Planned/Recurring (Upcoming), right = date. Optional subtle chevron when tappable.
+private struct SessionStyleActivityCard: View {
+    let entry: ActivityEntry
+    let dateLabel: String
+    var showChevron: Bool = false
+    var compactVerticalPadding: Bool = false
+
+    private var secondLineText: String {
+        if entry.kind == .planned, !entry.statusTitle.isEmpty {
+            return entry.statusTitle
+        }
+        return entry.secondLineText
+    }
+
+    private var secondLineColor: Color {
+        if entry.kind == .completed, secondLineText != "—" {
+            return Color.green
+        }
+        return Color.secondary
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: ActivityIcon.symbol(for: entry.title))
+                .font(.title2)
+                .foregroundStyle(entry.kind == .planned ? Color.blue : Color.green)
+                .frame(width: 28, alignment: .center)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(entry.title)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+
+                HStack {
+                    if entry.kind == .planned, !entry.statusTitle.isEmpty {
+                        Text(entry.statusTitle)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Color.blue)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.blue.opacity(0.12), in: Capsule())
+                    } else {
+                        Text(secondLineText)
+                            .font(.subheadline)
+                            .foregroundStyle(secondLineColor)
+                    }
+                    Spacer(minLength: 0)
+                    Text(dateLabel)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if showChevron {
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, compactVerticalPadding ? 6 : 10)
+    }
+}
+
 private struct TrackExerciseRow: View {
     let exercise: TrackedExerciseState
     let onToggle: () -> Void
@@ -1911,7 +2070,7 @@ private struct TrackExerciseRow: View {
                 HStack(alignment: .top, spacing: 12) {
                     Image(systemName: exercise.isCompleted ? "checkmark.circle.fill" : "circle")
                         .font(.title3.weight(.semibold))
-                        .foregroundStyle(exercise.isCompleted ? .green : .secondary)
+                        .foregroundStyle(exercise.isCompleted ? Color.green : Color.secondary)
 
                     VStack(alignment: .leading, spacing: 6) {
                         Text(exercise.plannedExercise.title)
@@ -2037,26 +2196,12 @@ private struct ReadOnlyWorkoutRow: View {
     let workout: CompletedWorkoutSummary
 
     var body: some View {
-        Text(rowText)
+        Text(workout.activityType)
             .font(.footnote)
             .foregroundStyle(.secondary)
             .lineLimit(1)
             .truncationMode(.tail)
             .padding(.vertical, 2)
-    }
-
-    private var rowText: String {
-        "\(workout.activityType) • \(detailText)"
-    }
-
-    private var detailText: String {
-        let trimmedLocation = workout.locationName.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        if trimmedLocation.isEmpty || trimmedLocation.caseInsensitiveCompare("Apple Health") == .orderedSame {
-            return "\(workout.durationMinutes) min"
-        }
-
-        return "\(workout.durationMinutes) min at \(trimmedLocation)"
     }
 }
 
@@ -2080,15 +2225,10 @@ private struct PlannedReadOnlyActivityRow: View {
 private struct UpcomingActivityRow: View {
     let entry: ActivityEntry
 
-    private var isTrainingActivityTitle: Bool {
-        let t = entry.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return t == "traditional strength training" || t == "core training"
-    }
-
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
             Text(entry.title)
-                .font(isTrainingActivityTitle ? .footnote.weight(.bold) : .footnote)
+                .font(.footnote)
             Spacer(minLength: 8)
             if !entry.statusTitle.isEmpty {
                 Text(entry.statusTitle)
@@ -2106,15 +2246,10 @@ private struct UpcomingActivityRow: View {
 private struct CompletedActivityRow: View {
     let entry: ActivityEntry
 
-    private var isTrainingActivityTitle: Bool {
-        let t = entry.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return t == "traditional strength training" || t == "core training"
-    }
-
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
             Text(entry.title)
-                .font(isTrainingActivityTitle ? .footnote.weight(.bold) : .footnote)
+                .font(.footnote)
             Spacer(minLength: 8)
             if !entry.statusTitle.isEmpty {
                 Text(entry.statusTitle)
@@ -2685,7 +2820,7 @@ private struct SettingsScreen: View {
 
                                                 Text(exercise.source.title)
                                                     .font(.caption.weight(.semibold))
-                                                    .foregroundStyle(exercise.source == .custom ? .green : .secondary)
+                                                    .foregroundStyle(exercise.source == .custom ? Color.green : Color.secondary)
                                                     .padding(.horizontal, 8)
                                                     .padding(.vertical, 4)
                                                     .background((exercise.source == .custom ? Color.green : Color.secondary).opacity(0.12), in: Capsule())
@@ -2804,13 +2939,13 @@ private struct SettingsScreen: View {
     private var healthStateColor: Color {
         switch store.healthSyncState {
         case .notConnected:
-            .secondary
+            Color.secondary
         case .connected, .refreshed:
-            .green
+            Color.green
         case .refreshing:
-            .blue
+            Color.blue
         case .failed:
-            .red
+            Color.red
         }
     }
 
