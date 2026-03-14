@@ -11,6 +11,10 @@ struct FitnessWatchAppApp: App {
             WatchRootView()
                 .environmentObject(store)
                 .environmentObject(workoutSender)
+                .task {
+                    let service = HealthKitService()
+                    try? await service.requestAuthorization()
+                }
         }
     }
 }
@@ -25,6 +29,7 @@ private enum WatchTrackPhase {
 private struct WatchRootView: View {
     @EnvironmentObject private var store: AppStore
     @EnvironmentObject private var workoutSender: WatchWorkoutSender
+    @StateObject private var liveWorkout = LiveWorkoutManager()
 
     @State private var phase: WatchTrackPhase = .chooseActivity
     @State private var selectedActivityType: String = "Traditional Strength Training"
@@ -88,6 +93,7 @@ private struct WatchRootView: View {
                     activeExercise = exercise
                     if !hasActiveWorkout {
                         hasActiveWorkout = true
+                        try? liveWorkout.start(activityTypeName: selectedActivityType)
                     }
                     phase = .exerciseTimer
                 },
@@ -97,28 +103,32 @@ private struct WatchRootView: View {
                         resetToStart()
                         return
                     }
-                    let completedAt = Date()
-                    workoutSender.sendWorkout(
-                        activityType: selectedActivityType,
-                        completedAt: completedAt,
-                        durationSeconds: totalExerciseDuration,
-                        exercises: completedExercises
-                    )
-                    resetToStart()
+                    Task {
+                        let (start, end) = (try? await liveWorkout.stop()) ?? (Date(), Date())
+                        workoutSender.sendWorkout(
+                            activityType: selectedActivityType,
+                            completedAt: end,
+                            durationSeconds: end.timeIntervalSince(start),
+                            exercises: completedExercises
+                        )
+                        resetToStart()
+                    }
                 },
                 onCancel: {
                     guard hasActiveWorkout else {
                         resetToStart()
                         return
                     }
-                    let completedAt = Date()
-                    workoutSender.sendWorkout(
-                        activityType: selectedActivityType,
-                        completedAt: completedAt,
-                        durationSeconds: totalExerciseDuration,
-                        exercises: completedExercises
-                    )
-                    resetToStart()
+                    Task {
+                        let (start, end) = (try? await liveWorkout.stop()) ?? (Date(), Date())
+                        workoutSender.sendWorkout(
+                            activityType: selectedActivityType,
+                            completedAt: end,
+                            durationSeconds: end.timeIntervalSince(start),
+                            exercises: completedExercises
+                        )
+                        resetToStart()
+                    }
                 }
             )
             .sheet(isPresented: $isShowingOtherExercisePicker) {
@@ -136,6 +146,8 @@ private struct WatchRootView: View {
             if let exercise = activeExercise {
                 ExerciseTimerView(
                     exerciseTitle: exercise.name,
+                    heartRate: liveWorkout.heartRate,
+                    activeCalories: liveWorkout.activeCalories,
                     onFinish: { elapsed in
                         completedExercises.append(WatchCompletedExercise(title: exercise.name, durationSeconds: elapsed))
                         totalExerciseDuration += elapsed
@@ -557,35 +569,69 @@ private struct WatchOtherExercisePicker: View {
 
 private struct ExerciseTimerView: View {
     let exerciseTitle: String
+    let heartRate: Double
+    let activeCalories: Double
     let onFinish: (TimeInterval) -> Void
     let onCancel: () -> Void
 
     @State private var startDate = Date()
 
     var body: some View {
-        VStack(spacing: 8) {
-            Text(exerciseTitle)
-                .font(.headline)
-                .lineLimit(1)
+        let active = max(Int(activeCalories.rounded()), 0)
+        let total = active
 
-            TimelineView(.periodic(from: startDate, by: 0.1)) { context in
-                let elapsed = context.date.timeIntervalSince(startDate)
-                Text(formattedTime(from: max(0, elapsed)))
-                    .font(.system(size: 32, weight: .bold, design: .monospaced))
-                    .foregroundStyle(.yellow)
+        return ScrollView {
+            VStack(spacing: 10) {
+                TimelineView(.periodic(from: startDate, by: 0.1)) { context in
+                    let elapsed = context.date.timeIntervalSince(startDate)
+                    Text(formattedTime(from: max(0, elapsed)))
+                        .font(.system(size: 32, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.yellow)
+                }
+
+                Text(exerciseTitle)
+                    .font(.headline)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+
+                HStack(spacing: 24) {
+                    VStack(spacing: 2) {
+                        Text("\(active)")
+                            .font(.system(.title3, design: .monospaced).weight(.semibold))
+                        Text("ACTIVE CAL")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    VStack(spacing: 2) {
+                        Text("\(total)")
+                            .font(.system(.title3, design: .monospaced).weight(.semibold))
+                        Text("TOTAL CAL")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                HStack(spacing: 6) {
+                    Text(heartRate > 0 ? "\(Int(heartRate))" : "--")
+                        .font(.system(.title3, design: .monospaced).weight(.semibold))
+                    Image(systemName: "heart.fill")
+                        .foregroundStyle(.red)
+                }
+                .frame(maxWidth: .infinity)
+
+                Button("Finish") {
+                    let elapsed = Date().timeIntervalSince(startDate)
+                    onFinish(max(elapsed, 0))
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.blue)
+
+                Button("Cancel", action: onCancel)
+                    .buttonStyle(.bordered)
             }
-
-            Button("Finish") {
-                let elapsed = Date().timeIntervalSince(startDate)
-                onFinish(max(elapsed, 0))
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(.blue)
-
-            Button("Cancel", action: onCancel)
-                .buttonStyle(.bordered)
+            .padding()
         }
-        .padding()
     }
 
     private func formattedTime(from interval: TimeInterval) -> String {
@@ -772,7 +818,7 @@ final class WatchWorkoutSender: NSObject, ObservableObject {
 }
 
 extension WatchWorkoutSender: WCSessionDelegate {
-    nonisolated(unsafe) func session(
+    nonisolated func session(
         _ session: WCSession,
         activationDidCompleteWith activationState: WCSessionActivationState,
         error: Error?

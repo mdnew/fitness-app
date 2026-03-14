@@ -414,6 +414,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Training Day";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.mnew.FitnessApp.healthreset;
 				ONLY_ACTIVE_ARCH = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mnew.FitnessApp.healthreset.watchkitapp;
 				PRODUCT_NAME = FitnessWatchApp;
 				SDKROOT = watchos;
@@ -449,6 +450,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Training Day";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.mnew.FitnessApp.healthreset;
 				ONLY_ACTIVE_ARCH = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mnew.FitnessApp.healthreset.watchkitapp;
 				PRODUCT_NAME = FitnessWatchApp;
 				SDKROOT = watchos;

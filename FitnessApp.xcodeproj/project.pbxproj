@@ -8,15 +8,19 @@
 
 /* Begin PBXBuildFile section */
 		076A1F8B4B5FAF40D11BDFD5 /* PersistenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74490C8820EBF9BC632C84FD /* PersistenceController.swift */; };
-		A1B2C3D4E5F6789012345679 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345678 /* Assets.xcassets */; };
+		0E63E85D799634EE8336ABD2 /* HealthKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7726BB3ABD771FD44D661DF9 /* HealthKitService.swift */; };
+		0FA7473349B301DCC5AB354B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 33370CB6BFB9EFB3A4AAB4EF /* Assets.xcassets */; };
 		5064C04B8C96D4E65AA7D859 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F49E7AA24285552E1C91AABC /* ContentView.swift */; };
 		6461E1FDC9EF5C2B4EA895DC /* AppStore+Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = A34F7CEE38559AAF67A7DFD5 /* AppStore+Persistence.swift */; };
+		7D22765354BBEDF928EF14E7 /* LiveWorkoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7C565CBABDACF58675FF104 /* LiveWorkoutManager.swift */; };
+		7FE10FB4A7748D317AD93970 /* HealthKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7726BB3ABD771FD44D661DF9 /* HealthKitService.swift */; };
 		A528819584C0AC5F4FD5DD05 /* AppModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CE77883D44517291BC6B7CC /* AppModels.swift */; };
 		A69BB5448AD6F58396E8C6E1 /* FitnessWatchAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11829726BFC67741FB1A8FD7 /* FitnessWatchAppApp.swift */; };
-		W1A2B3C4D5E6F78901234567 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = W1A2B3C4D5E6F78901234566 /* Assets.xcassets */; };
+		A8B5D051DC2CBCEBC7A45A7F /* LiveWorkoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7C565CBABDACF58675FF104 /* LiveWorkoutManager.swift */; };
 		AB996834A7AC6C2447AD0D40 /* FitnessWatchAppExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E37C4718ACA019898E655336 /* FitnessWatchAppExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		C42D5F472AE6E9FAB3CEC310 /* HealthKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E52F519C54DE92079416D4E /* HealthKitService.swift */; };
+		BD0CF05BFDA480B5A6FC076A /* HealthSyncController.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBA4C1F2411D9E2532801ECD /* HealthSyncController.swift */; };
 		CBE06C7C2E6FCA855B9BB7BF /* FitnessAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43794B42389C7ECF1ABD655E /* FitnessAppApp.swift */; };
+		D68FCD8F3B6A23E4F509613A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DB83BF408BFC9A75EE16A3DD /* Assets.xcassets */; };
 		ED20FCE0BCF6DFB1842A0A92 /* FitnessWatchApp.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 98D358166982E10DA22D7411 /* FitnessWatchApp.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		EF38DAB34CEF26D050B27B1E /* AppModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CE77883D44517291BC6B7CC /* AppModels.swift */; };
 /* End PBXBuildFile section */
@@ -63,46 +67,32 @@
 		};
 /* End PBXCopyFilesBuildPhase section */
 
-/* Begin PBXResourcesBuildPhase section */
-		C3D4E5F67890123456789012 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				A1B2C3D4E5F6789012345679 /* Assets.xcassets in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		W3C4D5E6F789012345678901 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				W1A2B3C4D5E6F78901234567 /* Assets.xcassets in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXResourcesBuildPhase section */
-
 /* Begin PBXFileReference section */
 		0114621C271DB4344EA5C9D7 /* FitnessApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FitnessApp.entitlements; sourceTree = "<group>"; };
 		11829726BFC67741FB1A8FD7 /* FitnessWatchAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FitnessWatchAppApp.swift; sourceTree = "<group>"; };
 		17E1E2C6490F31EE347BF51F /* FitnessApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FitnessApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		2E52F519C54DE92079416D4E /* HealthKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitService.swift; sourceTree = "<group>"; };
+		33370CB6BFB9EFB3A4AAB4EF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		43794B42389C7ECF1ABD655E /* FitnessAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FitnessAppApp.swift; sourceTree = "<group>"; };
 		4CE77883D44517291BC6B7CC /* AppModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModels.swift; sourceTree = "<group>"; };
 		74490C8820EBF9BC632C84FD /* PersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceController.swift; sourceTree = "<group>"; };
+		7726BB3ABD771FD44D661DF9 /* HealthKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitService.swift; sourceTree = "<group>"; };
 		962D7FEDA5381654F37AB668 /* FitnessWatchAppExtension-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "FitnessWatchAppExtension-Info.plist"; sourceTree = "<group>"; };
 		98D358166982E10DA22D7411 /* FitnessWatchApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FitnessWatchApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		W1A2B3C4D5E6F78901234566 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A34F7CEE38559AAF67A7DFD5 /* AppStore+Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppStore+Persistence.swift"; sourceTree = "<group>"; };
+		D52E55206C2A7608876320AD /* FitnessWatchApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FitnessWatchApp.entitlements; sourceTree = "<group>"; };
+		DB83BF408BFC9A75EE16A3DD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		DBA4C1F2411D9E2532801ECD /* HealthSyncController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthSyncController.swift; sourceTree = "<group>"; };
 		E37C4718ACA019898E655336 /* FitnessWatchAppExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FitnessWatchAppExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		E7C565CBABDACF58675FF104 /* LiveWorkoutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveWorkoutManager.swift; sourceTree = "<group>"; };
 		F49E7AA24285552E1C91AABC /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		A1B2C3D4E5F6789012345678 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
 		1996DA2876CFBDBE9A62C53A /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				7726BB3ABD771FD44D661DF9 /* HealthKitService.swift */,
+				E7C565CBABDACF58675FF104 /* LiveWorkoutManager.swift */,
 				559AD0EEC80489C9A76FCF32 /* Domain */,
 			);
 			path = Shared;
@@ -119,12 +109,12 @@
 		7A0624A72FC1D3B78F736B44 /* FitnessApp */ = {
 			isa = PBXGroup;
 			children = (
-				A1B2C3D4E5F6789012345678 /* Assets.xcassets */,
 				A34F7CEE38559AAF67A7DFD5 /* AppStore+Persistence.swift */,
+				DB83BF408BFC9A75EE16A3DD /* Assets.xcassets */,
 				F49E7AA24285552E1C91AABC /* ContentView.swift */,
 				0114621C271DB4344EA5C9D7 /* FitnessApp.entitlements */,
 				43794B42389C7ECF1ABD655E /* FitnessAppApp.swift */,
-				2E52F519C54DE92079416D4E /* HealthKitService.swift */,
+				DBA4C1F2411D9E2532801ECD /* HealthSyncController.swift */,
 				74490C8820EBF9BC632C84FD /* PersistenceController.swift */,
 			);
 			path = FitnessApp;
@@ -133,7 +123,8 @@
 		8A293AF2E0EACCCF4067B419 /* FitnessWatchApp */ = {
 			isa = PBXGroup;
 			children = (
-				W1A2B3C4D5E6F78901234566 /* Assets.xcassets */,
+				33370CB6BFB9EFB3A4AAB4EF /* Assets.xcassets */,
+				D52E55206C2A7608876320AD /* FitnessWatchApp.entitlements */,
 				11829726BFC67741FB1A8FD7 /* FitnessWatchAppApp.swift */,
 				962D7FEDA5381654F37AB668 /* FitnessWatchAppExtension-Info.plist */,
 			);
@@ -167,7 +158,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 98B0645059E6A635DC45C63E /* Build configuration list for PBXNativeTarget "FitnessWatchApp" */;
 			buildPhases = (
-				W3C4D5E6F789012345678901 /* Resources */,
 				2DE5D4AD6DE48DC497AFE718 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
@@ -187,6 +177,7 @@
 			buildConfigurationList = 55C327070D51A1245CDB99B7 /* Build configuration list for PBXNativeTarget "FitnessWatchAppExtension" */;
 			buildPhases = (
 				2316B740AE5976AF612C718B /* Sources */,
+				722723685832F6F628592342 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -204,7 +195,7 @@
 			buildConfigurationList = A6C0FB58A13985AC78DD940F /* Build configuration list for PBXNativeTarget "FitnessApp" */;
 			buildPhases = (
 				D12520A21395F1CB239C40C5 /* Sources */,
-				C3D4E5F67890123456789012 /* Resources */,
+				3C604A3F01F9481E5470616F /* Resources */,
 				EA55AF2ADA967A7A760F1C2F /* Embed Watch Content */,
 			);
 			buildRules = (
@@ -249,6 +240,25 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		3C604A3F01F9481E5470616F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D68FCD8F3B6A23E4F509613A /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		722723685832F6F628592342 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0FA7473349B301DCC5AB354B /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		2316B740AE5976AF612C718B /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -256,6 +266,8 @@
 			files = (
 				A528819584C0AC5F4FD5DD05 /* AppModels.swift in Sources */,
 				A69BB5448AD6F58396E8C6E1 /* FitnessWatchAppApp.swift in Sources */,
+				0E63E85D799634EE8336ABD2 /* HealthKitService.swift in Sources */,
+				7D22765354BBEDF928EF14E7 /* LiveWorkoutManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -267,7 +279,9 @@
 				6461E1FDC9EF5C2B4EA895DC /* AppStore+Persistence.swift in Sources */,
 				5064C04B8C96D4E65AA7D859 /* ContentView.swift in Sources */,
 				CBE06C7C2E6FCA855B9BB7BF /* FitnessAppApp.swift in Sources */,
-				C42D5F472AE6E9FAB3CEC310 /* HealthKitService.swift in Sources */,
+				7FE10FB4A7748D317AD93970 /* HealthKitService.swift in Sources */,
+				BD0CF05BFDA480B5A6FC076A /* HealthSyncController.swift in Sources */,
+				A8B5D051DC2CBCEBC7A45A7F /* LiveWorkoutManager.swift in Sources */,
 				076A1F8B4B5FAF40D11BDFD5 /* PersistenceController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -296,8 +310,8 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = MPZPWEMR37;
 				INFOPLIST_KEY_CFBundleDisplayName = "Training Day";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Training Day uses your Apple Health workout history to detect recurring activities and improve planning.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Training Day writes completed strength workouts to Apple Health to keep your workout history complete.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Training Day reads your workout history and live heart rate to improve planning and display stats during workouts.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Training Day saves completed workouts to Apple Health to keep your history complete.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
@@ -321,8 +335,8 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = MPZPWEMR37;
 				INFOPLIST_KEY_CFBundleDisplayName = "Training Day";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Training Day uses your Apple Health workout history to detect recurring activities and improve planning.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Training Day writes completed strength workouts to Apple Health to keep your workout history complete.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Training Day reads your workout history and live heart rate to improve planning and display stats during workouts.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Training Day saves completed workouts to Apple Health to keep your history complete.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
@@ -406,6 +420,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_COMPLICATION_NAME = Complication;
+				CODE_SIGN_ENTITLEMENTS = FitnessWatchApp/FitnessWatchApp.entitlements;
 				DEVELOPMENT_TEAM = MPZPWEMR37;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "FitnessWatchApp/FitnessWatchAppExtension-Info.plist";
@@ -427,6 +442,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				DEVELOPMENT_TEAM = MPZPWEMR37;
 				INFOPLIST_KEY_CFBundleDisplayName = "Training Day";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.mnew.FitnessApp.healthreset;
@@ -444,6 +460,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_COMPLICATION_NAME = Complication;
+				CODE_SIGN_ENTITLEMENTS = FitnessWatchApp/FitnessWatchApp.entitlements;
 				DEVELOPMENT_TEAM = MPZPWEMR37;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "FitnessWatchApp/FitnessWatchAppExtension-Info.plist";
@@ -465,6 +482,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				DEVELOPMENT_TEAM = MPZPWEMR37;
 				INFOPLIST_KEY_CFBundleDisplayName = "Training Day";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.mnew.FitnessApp.healthreset;
