@@ -21,7 +21,7 @@ struct ContentView: View {
             RoutineScreen()
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .tabItem {
-                    Label("Routine", systemImage: "calendar")
+                    Label("Plan", systemImage: "calendar")
                 }
 
             SettingsScreen()
@@ -33,6 +33,64 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .toolbarBackground(.visible, for: .tabBar)
         .toolbarBackground(Color(.systemBackground), for: .tabBar)
+    }
+}
+
+private struct PlannedActivityEditorView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let initialItem: PlannedActivityItem
+    let onSave: (PlannedActivityItem) -> Void
+
+    @State private var activityType: String
+    @State private var date: Date
+
+    init(initialItem: PlannedActivityItem, onSave: @escaping (PlannedActivityItem) -> Void) {
+        self.initialItem = initialItem
+        self.onSave = onSave
+        _activityType = State(initialValue: initialItem.activityType)
+        _date = State(initialValue: initialItem.date)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Activity") {
+                    TextField("Activity Type", text: $activityType)
+                }
+
+                Section("Date") {
+                    DatePicker(
+                        "When",
+                        selection: $date,
+                        displayedComponents: [.date]
+                    )
+                }
+            }
+            .navigationTitle("Planned Activity")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        let trimmedType = activityType.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !trimmedType.isEmpty else { return }
+                        onSave(
+                            PlannedActivityItem(
+                                id: initialItem.id,
+                                activityType: trimmedType,
+                                date: date
+                            )
+                        )
+                        dismiss()
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -123,22 +181,13 @@ private struct GoalsScreen: View {
 
 private struct RoutineScreen: View {
     @EnvironmentObject private var store: AppStore
-    @State private var editingRoutineDay: RoutineDay?
-    @State private var isAddingRoutineDay = false
+    @State private var editingRoutineActivity: RoutineActivity?
+    @State private var isAddingRoutineActivity = false
+    @State private var editingPlannedActivity: PlannedActivityItem?
 
     var body: some View {
         NavigationStack {
             ScreenScrollContainer {
-                AppCard {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Weekly Training Plan")
-                            .font(.headline)
-                        Text("Edit your lifting days, target body parts, and default watch workout settings.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
                 SectionTitle(title: "Your Focus")
                 AppCard {
                     VStack(alignment: .leading, spacing: 12) {
@@ -156,89 +205,217 @@ private struct RoutineScreen: View {
                     }
                 }
 
+                SectionTitle(title: "Training Activities")
+                VStack(spacing: 10) {
+                    trainingActivityCard(activityType: "Traditional Strength Training")
+                    trainingActivityCard(activityType: "Core Training")
+                }
+
                 HStack {
-                    SectionTitle(title: "Weekly Plan")
+                    SectionTitle(title: "Planned Activities")
                     Spacer()
                     Button {
-                        isAddingRoutineDay = true
+                        editingPlannedActivity = PlannedActivityItem(
+                            id: UUID(),
+                            activityType: store.selectedFocusActivityType ?? WorkoutActivityCatalog.titles.first ?? "Traditional Strength Training",
+                            date: .now
+                        )
                     } label: {
-                        Label("Add Day", systemImage: "plus")
+                        Label("Add Planned", systemImage: "plus")
                             .font(.subheadline.weight(.semibold))
                     }
                 }
 
-                VStack(spacing: 10) {
-                    if store.routineDays.isEmpty {
-                        AppCard {
-                            EmptyCardMessage(message: "No routine days yet. Add one to prefill workout defaults on Apple Watch.")
-                        }
-                    } else {
-                        ForEach(store.routineDays) { routineDay in
+                if store.plannedActivities.isEmpty {
+                    AppCard {
+                        EmptyCardMessage(message: "Create one-off activities on specific dates, like a ski day or race.")
+                    }
+                } else {
+                    VStack(spacing: 10) {
+                        ForEach(store.plannedActivities.sorted(by: { $0.date < $1.date })) { planned in
                             AppCard {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    HStack(alignment: .top) {
-                                        VStack(alignment: .leading, spacing: 6) {
-                                            Text(routineDay.weekday.title)
-                                                .font(.headline)
-                                            Text(routineDay.focusSummary)
-                                                .font(.subheadline.weight(.medium))
-                                                .foregroundStyle(.secondary)
-                                        }
-
-                                        Spacer()
-
-                                        HStack(spacing: 8) {
-                                            SmallIconButton(systemImage: "pencil") {
-                                                editingRoutineDay = routineDay
-                                            }
-
-                                            SmallIconButton(systemImage: "trash", tint: .red) {
-                                                store.removeRoutineDay(id: routineDay.id)
-                                                store.persist()
-                                            }
-                                        }
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(planned.activityType)
+                                            .font(.headline)
+                                        Text(planned.date.formatted(date: .abbreviated, time: .omitted))
+                                            .font(.footnote)
+                                            .foregroundStyle(.secondary)
                                     }
-
-                                    Label(routineDefaultsText(for: routineDay), systemImage: "figure.strengthtraining.traditional")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
+                                    Spacer()
+                                    SmallIconButton(systemImage: "pencil") {
+                                        editingPlannedActivity = planned
+                                    }
+                                    SmallIconButton(systemImage: "trash", tint: .red) {
+                                        store.plannedActivities.removeAll { $0.id == planned.id }
+                                        store.persist()
+                                    }
                                 }
                             }
                         }
                     }
                 }
+
+                HStack {
+                    SectionTitle(title: "Recurring Plans")
+                    Spacer()
+                    Button {
+                        isAddingRoutineActivity = true
+                    } label: {
+                        Label("Add Recurring Plan", systemImage: "plus")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                }
+
+                VStack(spacing: 10) {
+                    if store.routineActivities.isEmpty {
+                        AppCard {
+                            EmptyCardMessage(message: "No plans yet. Add one to create a reusable workout and schedule it on specific weekdays.")
+                        }
+                    } else {
+                        ForEach(recurringRoutineActivities) { routineActivity in
+                            routineActivityCard(routineActivity)
+                        }
+                    }
+                }
             }
-            .navigationTitle("Routine")
+            .navigationTitle("Plan")
             .navigationBarTitleDisplayMode(.inline)
-            .sheet(item: $editingRoutineDay) { routineDay in
-                RoutineDayEditorView(
-                    title: "Edit Routine Day",
-                    initialRoutineDay: routineDay,
-                    locations: store.locations,
-                    unavailableWeekdays: Set(store.routineDays.map(\.weekday))
-                ) { updatedRoutineDay in
-                    store.upsertRoutineDay(updatedRoutineDay)
-                    store.persist()
-                }
+            .sheet(item: $editingRoutineActivity) { routineActivity in
+                RoutineActivityEditorView(
+                    title: routineActivity.isTrainingTemplate ? "Edit Training Activity" : "Edit Plan",
+                    initialRoutineActivity: routineActivity,
+                    activityTypeOptions: routineActivity.isTrainingTemplate ? [routineActivity.activityType] : routineActivityOptions,
+                    isTrainingActivity: routineActivity.isTrainingTemplate,
+                    lockedActivityType: routineActivity.isTrainingTemplate ? routineActivity.activityType : nil,
+                    allowedBodyAreas: routineActivity.isTrainingTemplate ? allowedTrainingBodyAreas(for: routineActivity.activityType) : nil,
+                    onSave: { updatedRoutineActivity in
+                        store.upsertRoutineActivity(updatedRoutineActivity)
+                        store.persist()
+                    }
+                )
             }
-            .sheet(isPresented: $isAddingRoutineDay) {
-                RoutineDayEditorView(
-                    title: "Add Routine Day",
-                    initialRoutineDay: nil,
-                    locations: store.locations,
-                    unavailableWeekdays: Set(store.routineDays.map(\.weekday))
-                ) { newRoutineDay in
-                    store.upsertRoutineDay(newRoutineDay)
-                    store.persist()
-                }
+            .sheet(isPresented: $isAddingRoutineActivity) {
+                RoutineActivityEditorView(
+                    title: "Add Recurring Plan",
+                    initialRoutineActivity: nil,
+                    activityTypeOptions: routineActivityOptions,
+                    isTrainingActivity: false,
+                    lockedActivityType: nil,
+                    allowedBodyAreas: nil,
+                    onSave: { newRoutineActivity in
+                        store.upsertRoutineActivity(newRoutineActivity)
+                        store.persist()
+                    }
+                )
+            }
+            .sheet(item: $editingPlannedActivity) { planned in
+                PlannedActivityEditorView(
+                    initialItem: planned,
+                    onSave: { updated in
+                        if let index = store.plannedActivities.firstIndex(where: { $0.id == updated.id }) {
+                            store.plannedActivities[index] = updated
+                        } else {
+                            store.plannedActivities.append(updated)
+                        }
+                        store.plannedActivities.sort { $0.date < $1.date }
+                        store.persist()
+                    }
+                )
             }
         }
     }
 
-    private func routineDefaultsText(for routineDay: RoutineDay) -> String {
-        let locationName = store.locations.first(where: { $0.id == routineDay.defaultLocationID })?.name ?? "No location"
-        let durationText = routineDay.defaultDurationMinutes.map { "\($0) minutes" } ?? "No duration"
-        return "\(durationText) at \(locationName)"
+    private func routineScheduleText(for routineActivity: RoutineActivity) -> String {
+        let scheduleSummary = routineActivity.scheduleSummary.trimmingCharacters(in: .whitespacesAndNewlines)
+        return scheduleSummary.isEmpty ? "Not scheduled yet" : scheduleSummary
+    }
+
+    @ViewBuilder
+    private func trainingActivityCard(activityType: String) -> some View {
+        let existing = store.routineActivities.first {
+            $0.isTrainingTemplate &&
+            $0.activityType.trimmingCharacters(in: .whitespacesAndNewlines)
+                .caseInsensitiveCompare(activityType) == .orderedSame
+        }
+
+        let subtitle: String = {
+            if let existing {
+                return existing.focusSummary
+            } else {
+                let areas = allowedTrainingBodyAreas(for: activityType)
+                return areas.isEmpty ? "" : areas.map(\.title).joined(separator: ", ")
+            }
+        }()
+
+        AppCard {
+            Button {
+                let routine = existing ?? RoutineActivity(
+                    id: UUID(),
+                    title: activityType,
+                    activityType: activityType,
+                    focusAreas: [],
+                    scheduledWeekdays: [],
+                    defaultLocationID: nil,
+                    defaultDurationMinutes: nil,
+                    bodyPartSchedules: [],
+                    isTrainingTemplate: true
+                )
+                editingRoutineActivity = routine
+            } label: {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(activityType)
+                            .font(.headline)
+                        if !subtitle.isEmpty {
+                            Text(subtitle)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    @ViewBuilder
+    private func routineActivityCard(_ routineActivity: RoutineActivity) -> some View {
+        AppCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(routineActivity.title)
+                            .font(.headline)
+                        Text(routineActivity.focusSummary)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    HStack(spacing: 8) {
+                        SmallIconButton(systemImage: "pencil") {
+                            editingRoutineActivity = routineActivity
+                        }
+
+                        SmallIconButton(systemImage: "trash", tint: .red) {
+                            store.removeRoutineActivity(id: routineActivity.id)
+                            store.persist()
+                        }
+                    }
+                }
+
+                Label(routineScheduleText(for: routineActivity), systemImage: "calendar")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+            }
+        }
     }
 
     private var focusActivityOptions: [String] {
@@ -265,65 +442,139 @@ private struct RoutineScreen: View {
         )
     }
 
+    private var routineActivityOptions: [String] {
+        Array(
+            Set(
+                store.recurringActivities
+                    .filter(\.isDetectedFromHealth)
+                    .map(\.activityType)
+                    .filter { activityType in
+                        let trimmed = activityType.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !trimmed.isEmpty else { return false }
+                        let lowercased = trimmed.lowercased()
+                        return lowercased != "traditional strength training" &&
+                            lowercased != "core training"
+                    }
+            )
+        )
+        .sorted { lhs, rhs in
+            lhs.localizedCaseInsensitiveCompare(rhs) == .orderedAscending
+        }
+    }
+
+    private var recurringRoutineActivities: [RoutineActivity] {
+        store.routineActivities.filter { !$0.isTrainingTemplate }
+    }
+
+    private func allowedTrainingBodyAreas(for activityType: String) -> [ExerciseBodyArea] {
+        let normalized = activityType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if normalized == "core training" {
+            return [.glutes, .abs]
+        }
+
+        return ExerciseBodyArea.allCases.filter { area in
+            area != .glutes && area != .abs
+        }
+    }
 }
 
 private struct ActivityScreen: View {
     @EnvironmentObject private var store: AppStore
+    @State private var hasScrolledToToday = false
 
     var body: some View {
         NavigationStack {
-            ScreenScrollContainer {
-                SectionTitle(title: "Upcoming")
-                if upcomingEntries.isEmpty {
-                    AppCard {
-                        EmptyCardMessage(message: "No upcoming sessions are scheduled from your routine yet.")
-                    }
-                } else {
-                    VStack(spacing: 10) {
-                        ForEach(upcomingEntries) { entry in
-                            ActivityEntryCard(entry: entry)
-                        }
-                    }
-                }
+            ZStack(alignment: .topLeading) {
+                Color(.systemGroupedBackground)
+                    .ignoresSafeArea()
 
-                SectionTitle(title: "Past")
-                if pastWorkoutDayGroups.isEmpty {
-                    AppCard {
-                        EmptyCardMessage(message: pastSessionsEmptyMessage)
-                    }
-                } else {
-                    VStack(spacing: 10) {
-                        ForEach(pastWorkoutDayGroups) { group in
-                            AppCard {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text(weekdayDateText(for: group.date))
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(.secondary)
-                                        .tracking(0.8)
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 16) {
+                            SectionTitle(title: "Upcoming")
+                            if upcomingWorkoutDayGroups.isEmpty {
+                                AppCard {
+                                    EmptyCardMessage(message: "No upcoming sessions are scheduled from your plan yet.")
+                                }
+                            } else {
+                                VStack(spacing: 10) {
+                                    ForEach(upcomingWorkoutDayGroups) { group in
+                                        AppCard {
+                                            VStack(alignment: .leading, spacing: 12) {
+                                                Text(weekdayDateText(for: group.date))
+                                                    .font(.caption.weight(.semibold))
+                                                    .foregroundStyle(.secondary)
+                                                    .tracking(0.8)
 
-                                    if let strengthWorkout = group.strengthWorkout {
-                                        let entry = activityEntry(for: strengthWorkout)
-                                        NavigationLink {
-                                            ActivityEntryDetailScreen(entry: entry)
-                                        } label: {
-                                            StrengthWorkoutSummaryRow(entry: entry)
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
+                                                ForEach(group.strengthEntries) { entry in
+                                                    UpcomingActivityRow(entry: entry)
+                                                }
 
-                                    if !group.otherWorkouts.isEmpty {
-                                        if group.strengthWorkout != nil {
-                                            Divider()
-                                        }
+                                                if !group.otherEntries.isEmpty {
+                                                    if !group.strengthEntries.isEmpty {
+                                                        Divider()
+                                                    }
 
-                                        VStack(alignment: .leading, spacing: 8) {
-                                            ForEach(group.otherWorkouts) { workout in
-                                                ReadOnlyWorkoutRow(workout: workout)
+                                                    VStack(alignment: .leading, spacing: 8) {
+                                                        ForEach(group.otherEntries) { entry in
+                                                            UpcomingActivityRow(entry: entry)
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
                                     }
                                 }
                             }
+
+                            SectionTitle(title: "Today")
+                                .id("activity-today-anchor")
+
+                            if todayEntries.isEmpty && todayWorkoutDayGroup == nil {
+                                AppCard {
+                                    EmptyCardMessage(message: "Nothing is planned or imported for today yet.")
+                                }
+                            } else {
+                                if !todayEntries.isEmpty {
+                                    VStack(spacing: 10) {
+                                        ForEach(todayEntries) { entry in
+                                            ActivityEntryCard(entry: entry)
+                                        }
+                                    }
+                                }
+
+                                if let todayWorkoutDayGroup {
+                                    pastWorkoutDayGroupCard(todayWorkoutDayGroup)
+                                }
+                            }
+
+                            SectionTitle(title: "Past")
+                            if pastWorkoutDayGroups.isEmpty {
+                                AppCard {
+                                    EmptyCardMessage(message: pastSessionsEmptyMessage)
+                                }
+                            } else {
+                                VStack(spacing: 10) {
+                                    ForEach(pastWorkoutDayGroups) { group in
+                                        pastWorkoutDayGroupCard(group)
+                                    }
+                                }
+                            }
+
+                            Color.clear
+                                .frame(height: 96)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
+                        .padding(.bottom, 24)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .onAppear {
+                        guard !hasScrolledToToday else { return }
+                        hasScrolledToToday = true
+                        DispatchQueue.main.async {
+                            proxy.scrollTo("activity-today-anchor", anchor: .top)
                         }
                     }
                 }
@@ -333,62 +584,224 @@ private struct ActivityScreen: View {
         }
     }
 
-    private var upcomingEntries: [ActivityEntry] {
+    @ViewBuilder
+    private func pastWorkoutDayGroupCard(_ group: PastWorkoutDayGroup) -> some View {
+        AppCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(weekdayDateText(for: group.date))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .tracking(0.8)
+
+                ForEach(group.strengthWorkouts) { strengthWorkout in
+                    let entry = activityEntry(for: strengthWorkout)
+                    NavigationLink {
+                        ActivityEntryDetailScreen(entry: entry)
+                    } label: {
+                        CompletedActivityRow(entry: entry)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                if !group.otherWorkouts.isEmpty {
+                    if !group.strengthWorkouts.isEmpty {
+                        Divider()
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(group.otherWorkouts) { workout in
+                            ReadOnlyWorkoutRow(workout: workout)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var futureEntries: [ActivityEntry] {
         let completedDays = Set(strengthWorkouts.map { calendar.startOfDay(for: $0.date) })
 
-        var entries: [ActivityEntry] = []
-        guard let startOfToday = calendar.dateInterval(of: .day, for: .now)?.start else {
-            return entries
-        }
-
-        for offset in 0..<21 {
-            guard let date = calendar.date(byAdding: .day, value: offset, to: startOfToday) else {
-                continue
-            }
-
-            guard let weekday = mappedWeekday(for: date) else {
-                continue
-            }
-
-            guard let routineDay = store.routineDays.first(where: { $0.weekday == weekday }) else {
-                continue
-            }
-
-            let dayStart = calendar.startOfDay(for: date)
-            guard !completedDays.contains(dayStart) else {
-                continue
-            }
-
-            let locationName = store.locations.first(where: { $0.id == routineDay.defaultLocationID })?.name ?? "No location"
-            let durationText = routineDay.defaultDurationMinutes.map { "\($0) minutes" } ?? "No duration"
-
-            entries.append(
+        // Recurring Activities-based upcoming entries (non-training routines).
+        let recurringEntries: [ActivityEntry] = store
+            .upcomingScheduledRoutineActivities(limit: 6)
+            .filter { calendar.startOfDay(for: $0.date) > startOfToday }
+            .filter { !completedDays.contains(calendar.startOfDay(for: $0.date)) }
+            .map { scheduledActivity in
                 ActivityEntry(
-                    id: "\(routineDay.id.uuidString)-\(dayStart.timeIntervalSince1970)",
+                    id: scheduledActivity.id,
                     kind: .planned,
                     workoutID: nil,
-                    date: date,
-                    title: "Traditional Strength Training",
-                    subtitle: routineDay.focusSummary,
+                    date: scheduledActivity.date,
+                    title: scheduledActivity.routineActivity.activityType,
+                    subtitle: scheduledActivity.focusSummary,
                     subtitleTint: .secondary,
-                    detail: "\(durationText) at \(locationName)",
-                    statusTitle: "Planned",
+                    detail: "",
+                    statusTitle: "Recurring",
                     statusTint: .blue,
                     exerciseDetails: [],
                     emptyExerciseMessage: "Suggested exercises are generated when you start a Track session."
                 )
-            )
+            }
 
-            if entries.count == 3 {
-                break
+        // Training Activities-based upcoming entries (from per-body-part schedules).
+        let trainingEntries = trainingFutureEntries(completedDays: completedDays)
+
+        // One-off Planned Activities.
+        let plannedEntries = plannedActivitiesFutureEntries(completedDays: completedDays)
+
+        // Merge all types, sort by date (soonest first), then limit so Training and Planned mix with Recurring.
+        let combined = recurringEntries + trainingEntries + plannedEntries
+        return Array(
+            combined
+                .sorted { calendar.startOfDay(for: $0.date) < calendar.startOfDay(for: $1.date) }
+                .prefix(30)
+        )
+    }
+
+    private func trainingFutureEntries(completedDays: Set<Date>) -> [ActivityEntry] {
+        let templates = store.routineActivities.filter(\.isTrainingTemplate)
+        guard !templates.isEmpty else { return [] }
+
+        var results: [ActivityEntry] = []
+
+        for offset in 1...21 {
+            guard let date = calendar.date(byAdding: .day, value: offset, to: startOfToday) else {
+                continue
+            }
+            let dayStart = calendar.startOfDay(for: date)
+            guard !completedDays.contains(dayStart) else { continue }
+
+            let weekday = store.weekday(for: date)
+
+            for template in templates {
+                let scheduledWeekdays = Set(template.bodyPartSchedules.flatMap(\.weekdays))
+                guard !scheduledWeekdays.isEmpty, scheduledWeekdays.contains(weekday) else {
+                    continue
+                }
+
+                // Avoid duplicate entry for same date + activity type.
+                let alreadyExists = results.contains(where: { entry in
+                    calendar.isDate(entry.date, inSameDayAs: date) &&
+                    entry.title.trimmingCharacters(in: .whitespacesAndNewlines)
+                        .caseInsensitiveCompare(template.activityType) == .orderedSame
+                })
+                if alreadyExists { continue }
+
+                let subtitle = isTraditionalStrengthActivityType(template.activityType) ? "" : template.focusSummary
+
+                let entry = ActivityEntry(
+                    id: "training-\(template.id.uuidString)-\(dayStart.timeIntervalSince1970)",
+                    kind: .planned,
+                    workoutID: nil,
+                    date: date,
+                    title: template.activityType,
+                    subtitle: subtitle,
+                    subtitleTint: .secondary,
+                    detail: "",
+                    statusTitle: "Training",
+                    statusTint: .blue,
+                    exerciseDetails: [],
+                    emptyExerciseMessage: "Suggested exercises are generated when you start a Track session."
+                )
+                results.append(entry)
             }
         }
 
-        return entries.sorted { $0.date > $1.date }
+        return results
+    }
+
+    private func plannedActivitiesFutureEntries(completedDays: Set<Date>) -> [ActivityEntry] {
+        store.plannedActivities
+            .filter { calendar.startOfDay(for: $0.date) > startOfToday }
+            .filter { !completedDays.contains(calendar.startOfDay(for: $0.date)) }
+            .map { planned in
+                ActivityEntry(
+                    id: planned.id.uuidString,
+                    kind: .planned,
+                    workoutID: nil,
+                    date: planned.date,
+                    title: planned.activityType,
+                    subtitle: "",
+                    subtitleTint: .secondary,
+                    detail: "",
+                    statusTitle: "Planned",
+                    statusTint: .blue,
+                    exerciseDetails: [],
+                    emptyExerciseMessage: "This activity will appear here on the day it happens."
+                )
+            }
+    }
+
+    private var upcomingWorkoutDayGroups: [UpcomingWorkoutDayGroup] {
+        let groupedEntries = Dictionary(grouping: futureEntries) { entry in
+            calendar.startOfDay(for: entry.date)
+        }
+
+        return groupedEntries
+            .map { day, entries in
+                let sortedEntries = entries.sorted { lhs, rhs in
+                    if isTraditionalStrengthActivityType(lhs.title) != isTraditionalStrengthActivityType(rhs.title) {
+                        return isTraditionalStrengthActivityType(lhs.title)
+                    }
+
+                    return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
+                }
+
+                return UpcomingWorkoutDayGroup(
+                    date: day,
+                    strengthEntries: sortedEntries.filter { isTraditionalStrengthActivityType($0.title) },
+                    otherEntries: sortedEntries.filter { !isTraditionalStrengthActivityType($0.title) }
+                )
+            }
+            .sorted { $0.date > $1.date }
+    }
+
+    private var todayEntries: [ActivityEntry] {
+        let completedDays = Set(strengthWorkouts.map { calendar.startOfDay(for: $0.date) })
+        return store.scheduledRoutineActivities(for: .now)
+            .filter { !completedDays.contains(calendar.startOfDay(for: $0.date)) }
+            .filter { scheduledActivity in
+                !hasImportedWorkout(on: scheduledActivity.date, activityType: scheduledActivity.routineActivity.activityType)
+            }
+            .map { scheduledActivity in
+                return ActivityEntry(
+                    id: "today-\(scheduledActivity.id)",
+                    kind: .planned,
+                    workoutID: nil,
+                    date: scheduledActivity.date,
+                    title: scheduledActivity.routineActivity.activityType,
+                    subtitle: scheduledActivity.focusSummary,
+                    subtitleTint: .secondary,
+                    detail: "",
+                    statusTitle: "",
+                    statusTint: .blue,
+                    exerciseDetails: [],
+                    emptyExerciseMessage: "Suggested exercises are generated when you start a Track session."
+                )
+            }
     }
 
     private var pastWorkouts: [CompletedWorkoutSummary] {
-        importedWorkouts.filter { $0.date < .now }
+        importedWorkouts.filter { calendar.startOfDay(for: $0.date) < startOfToday }
+    }
+
+    private var todayWorkoutDayGroup: PastWorkoutDayGroup? {
+        let todaysWorkouts = importedWorkouts.filter { calendar.isDate($0.date, inSameDayAs: .now) }
+        guard !todaysWorkouts.isEmpty else { return nil }
+
+        let sortedWorkouts = todaysWorkouts.sorted { lhs, rhs in
+            if isStrengthOrCoreWorkout(lhs) != isStrengthOrCoreWorkout(rhs) {
+                return isStrengthOrCoreWorkout(lhs)
+            }
+
+            return lhs.date > rhs.date
+        }
+
+        return PastWorkoutDayGroup(
+            date: startOfToday,
+            strengthWorkouts: sortedWorkouts.filter(isStrengthOrCoreWorkout),
+            otherWorkouts: sortedWorkouts.filter { !isStrengthOrCoreWorkout($0) }
+        )
     }
 
     private var pastWorkoutDayGroups: [PastWorkoutDayGroup] {
@@ -399,8 +812,8 @@ private struct ActivityScreen: View {
         return groupedWorkouts
             .map { day, workouts in
                 let sortedWorkouts = workouts.sorted { lhs, rhs in
-                    if isTraditionalStrengthWorkout(lhs) != isTraditionalStrengthWorkout(rhs) {
-                        return isTraditionalStrengthWorkout(lhs)
+                    if isStrengthOrCoreWorkout(lhs) != isStrengthOrCoreWorkout(rhs) {
+                        return isStrengthOrCoreWorkout(lhs)
                     }
 
                     return lhs.date > rhs.date
@@ -408,15 +821,15 @@ private struct ActivityScreen: View {
 
                 return PastWorkoutDayGroup(
                     date: day,
-                    strengthWorkout: sortedWorkouts.first(where: isTraditionalStrengthWorkout),
-                    otherWorkouts: sortedWorkouts.filter { !isTraditionalStrengthWorkout($0) }
+                    strengthWorkouts: sortedWorkouts.filter(isStrengthOrCoreWorkout),
+                    otherWorkouts: sortedWorkouts.filter { !isStrengthOrCoreWorkout($0) }
                 )
             }
             .sorted { $0.date > $1.date }
     }
 
     private var strengthWorkouts: [CompletedWorkoutSummary] {
-        importedWorkouts.filter(isTraditionalStrengthWorkout)
+        importedWorkouts.filter(isStrengthOrCoreWorkout)
     }
 
     private var importedWorkouts: [CompletedWorkoutSummary] {
@@ -426,8 +839,27 @@ private struct ActivityScreen: View {
     }
 
     private func isTraditionalStrengthWorkout(_ workout: CompletedWorkoutSummary) -> Bool {
-        let normalizedActivity = workout.activityType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return normalizedActivity == "traditional strength training"
+        isTraditionalStrengthActivityType(workout.activityType)
+    }
+
+    /// True for Traditional Strength Training or Core Training (grouped together in Today/Past, tappable for exercises).
+    private func isStrengthOrCoreWorkout(_ workout: CompletedWorkoutSummary) -> Bool {
+        let t = workout.activityType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return t == "traditional strength training" || t == "core training"
+    }
+
+    private func isTraditionalStrengthActivityType(_ activityType: String) -> Bool {
+        activityType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "traditional strength training"
+    }
+
+    private func hasImportedWorkout(on date: Date, activityType: String) -> Bool {
+        let normalizedActivityType = activityType.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedActivityType.isEmpty else { return false }
+
+        return importedWorkouts.contains { workout in
+            calendar.isDate(workout.date, inSameDayAs: date) &&
+            workout.activityType.trimmingCharacters(in: .whitespacesAndNewlines).caseInsensitiveCompare(normalizedActivityType) == .orderedSame
+        }
     }
 
     private func activityEntry(for workout: CompletedWorkoutSummary) -> ActivityEntry {
@@ -473,17 +905,28 @@ private struct ActivityScreen: View {
         return "\(workout.durationMinutes) min at \(trimmedLocation)"
     }
 
-    private func mappedWeekday(for date: Date) -> Weekday? {
-        let weekdayIndex = calendar.component(.weekday, from: date)
-        return Weekday(rawValue: ((weekdayIndex + 5) % 7) + 1)
-    }
-
     private func weekdayDateText(for date: Date) -> String {
-        date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day().year()).uppercased()
+        if calendar.isDateInToday(date) {
+            return "TODAY"
+        }
+
+        if calendar.isDateInTomorrow(date) {
+            return "TOMORROW"
+        }
+
+        if calendar.isDateInYesterday(date) {
+            return "YESTERDAY"
+        }
+
+        return date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day().year()).uppercased()
     }
 
     private var calendar: Calendar {
         .current
+    }
+
+    private var startOfToday: Date {
+        calendar.startOfDay(for: .now)
     }
 
     private var pastSessionsEmptyMessage: String {
@@ -522,16 +965,20 @@ private struct ActivityScreen: View {
 
 private struct TrackScreen: View {
     @EnvironmentObject private var store: AppStore
+    @EnvironmentObject private var healthSyncController: HealthSyncController
     @State private var selectedLocationID: UUID?
     @State private var selectedDurationMinutes = 20
-    @State private var selectedManualFocusAreas: Set<ExerciseBodyArea> = []
-    @State private var isShowingManualSetupSheet = false
-    @State private var isShowingPlannedStartSheet = false
+    @State private var setupActivityType: String?
+    @State private var setupSelectedBodyParts: Set<ExerciseBodyArea> = []
+    @State private var isShowingSetupSheet = false
     @State private var isShowingOtherExerciseSheet = false
     @State private var isShowingFinishSheet = false
     @State private var isShowingDiscardAlert = false
     @State private var finishMessage = ""
     @State private var isShowingFinishMessage = false
+    @State private var isShowingExerciseTimer = false
+    @State private var activeExerciseID: UUID?
+    @State private var activeExerciseTitle: String = ""
 
     var body: some View {
         NavigationStack {
@@ -547,6 +994,13 @@ private struct TrackScreen: View {
                             Text("\(store.completedTrackedExerciseCount) of \(trackedSession.exercises.count) exercises checked")
                                 .font(.footnote.weight(.medium))
                                 .foregroundStyle(.secondary)
+
+                            Text(formattedElapsedTime(from: store.totalCompletedTrackedDuration))
+                                .font(.system(.title, design: .monospaced).weight(.bold))
+                                .padding(.top, 4)
+                            Text("Workout time")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                     }
 
@@ -559,14 +1013,34 @@ private struct TrackScreen: View {
                         VStack(spacing: 10) {
                             ForEach(trackedSession.exercises) { exercise in
                                 TrackExerciseRow(exercise: exercise) {
-                                    store.toggleTrackedExercise(id: exercise.id)
-                                    store.persist()
+                                    activeExerciseID = exercise.id
+                                    activeExerciseTitle = exercise.plannedExercise.title
+                                    isShowingExerciseTimer = true
                                 }
                             }
 
-                            WideActionButton(title: "Other", tint: .gray) {
+                            Button {
                                 isShowingOtherExerciseSheet = true
+                            } label: {
+                                AppCard {
+                                    HStack(alignment: .top, spacing: 12) {
+                                        Image(systemName: "plus.circle")
+                                            .font(.title3.weight(.semibold))
+                                            .foregroundStyle(.secondary)
+
+                                        VStack(alignment: .leading, spacing: 6) {
+                                            Text("Other")
+                                                .font(.headline)
+                                            Text("Add another exercise from your catalog.")
+                                                .font(.footnote)
+                                                .foregroundStyle(.secondary)
+                                        }
+
+                                        Spacer(minLength: 0)
+                                    }
+                                }
                             }
+                            .buttonStyle(.plain)
                         }
                     }
 
@@ -580,50 +1054,41 @@ private struct TrackScreen: View {
                         }
                     }
                 } else {
-                    if let nextPlannedWorkout {
-                        AppCard {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Next Planned Workout")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-
-                                Text(nextPlannedWorkout.focusSummary)
-                                    .font(.headline)
-                                Text(nextPlannedWorkout.dateText)
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundStyle(.secondary)
-                                Text("\(nextPlannedWorkout.durationMinutes) min at \(nextPlannedWorkout.locationName)")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                WideActionButton(title: "Start Planned Workout", tint: .blue) {
-                                    isShowingPlannedStartSheet = true
-                                }
-                            }
+                    SectionTitle(title: "Track")
+                    VStack(spacing: 12) {
+                        Button {
+                            prepareSetup(for: "Traditional Strength Training")
+                        } label: {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color.blue)
+                                .overlay(
+                                    HStack {
+                                        Text("🏋️‍♂️")
+                                        Text("Strength Training")
+                                            .font(.body.weight(.semibold))
+                                    }
+                                    .foregroundStyle(.white)
+                                )
+                                .frame(height: 48)
                         }
-                    } else {
-                        AppCard {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("No Planned Workout")
-                                    .font(.headline)
-                                Text("There is no upcoming planned workout right now. You can still create an unplanned session based on the body parts you want to train.")
-                                    .font(.footnote)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
+                        .buttonStyle(.plain)
 
-                    AppCard {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Unplanned Workout")
-                                .font(.headline)
-                            Text("Create a manual session whenever you want to train something outside your upcoming planned workout.")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-
-                            WideActionButton(title: "Start Unplanned Workout", tint: .gray) {
-                                isShowingManualSetupSheet = true
-                            }
+                        Button {
+                            prepareSetup(for: "Core Training")
+                        } label: {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color.blue)
+                                .overlay(
+                                    HStack {
+                                        Text("🔥")
+                                        Text("Core Training")
+                                            .font(.body.weight(.semibold))
+                                    }
+                                    .foregroundStyle(.white)
+                                )
+                                .frame(height: 48)
                         }
+                        .buttonStyle(.plain)
                     }
                 }
 
@@ -650,18 +1115,37 @@ private struct TrackScreen: View {
             .navigationTitle("Track")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
-                selectedLocationID = selectedLocationID ?? nextPlannedWorkout?.defaultLocationID ?? store.defaultLocation?.id ?? store.locations.first?.id
-                selectedDurationMinutes = nextPlannedWorkout?.durationMinutes ?? store.todayRoutineDay?.defaultDurationMinutes ?? 20
+                selectedLocationID = selectedLocationID ?? store.locations.first?.id
+                selectedDurationMinutes = selectedDurationMinutes > 0 ? selectedDurationMinutes : 20
             }
             .sheet(isPresented: $isShowingFinishSheet) {
                 TrackFinishSheet(
                     checkedExerciseCount: store.completedTrackedExerciseCount,
                     onConfirm: {
-                        if let pendingWorkout = store.finalizeTrackedWorkoutSession() {
-                            finishMessage = "Saved \(pendingWorkout.exerciseDetails.count) checked exercises. This session will attach when the matching Apple Health workout imports."
-                            store.persist()
-                            isShowingFinishSheet = false
-                            isShowingFinishMessage = true
+                        guard let session = store.trackedWorkoutSession else { return }
+                        let completedAt = Date()
+                        let completedCount = store.completedTrackedExerciseCount
+                        let pending = store.buildPendingTrackedWorkoutMerge(completedAt: completedAt)
+                        if let pending = pending {
+                            store.addPendingTrackedWorkout(pending)
+                        }
+
+                        finishMessage = "Completed \(completedCount) exercises. Your workout will appear after it syncs from Apple Health."
+                        store.discardTrackedWorkoutSession()
+                        store.persist()
+                        isShowingFinishSheet = false
+                        isShowingFinishMessage = true
+
+                        Task {
+                            if let pending = pending {
+                                await healthSyncController.logWorkoutFromTrackSession(pending, using: store)
+                            } else {
+                                await healthSyncController.logWorkoutFromTrackedSession(
+                                    session,
+                                    completedAt: completedAt,
+                                    using: store
+                                )
+                            }
                         }
                     },
                     onCancel: {
@@ -679,50 +1163,6 @@ private struct TrackScreen: View {
                     }
                 )
             }
-            .sheet(isPresented: $isShowingPlannedStartSheet) {
-                if let nextPlannedWorkout {
-                    TrackPlannedStartSheet(
-                        locationName: nextPlannedWorkout.locationName,
-                        selectedLocationID: $selectedLocationID,
-                        selectedDurationMinutes: $selectedDurationMinutes,
-                        locations: store.locations,
-                        onConfirm: {
-                            _ = store.startTrackedWorkout(
-                                for: nextPlannedWorkout.routineDay,
-                                targetDate: nextPlannedWorkout.date,
-                                locationID: selectedLocationID,
-                                durationMinutes: selectedDurationMinutes
-                            )
-                            store.persist()
-                            isShowingPlannedStartSheet = false
-                        },
-                        onCancel: {
-                            isShowingPlannedStartSheet = false
-                        }
-                    )
-                }
-            }
-            .sheet(isPresented: $isShowingManualSetupSheet) {
-                TrackUnplannedStartSheet(
-                    selectedLocationID: $selectedLocationID,
-                    selectedDurationMinutes: $selectedDurationMinutes,
-                    selectedFocusAreas: $selectedManualFocusAreas,
-                    locations: store.locations,
-                    onConfirm: {
-                        _ = store.startTrackedWorkout(
-                            focusAreas: ExerciseBodyArea.allCases.filter { selectedManualFocusAreas.contains($0) },
-                            targetDate: .now,
-                            locationID: selectedLocationID,
-                            durationMinutes: selectedDurationMinutes
-                        )
-                        store.persist()
-                        isShowingManualSetupSheet = false
-                    },
-                    onCancel: {
-                        isShowingManualSetupSheet = false
-                    }
-                )
-            }
             .alert("Track Session Saved", isPresented: $isShowingFinishMessage) {
                 Button("OK", role: .cancel) {}
             } message: {
@@ -737,6 +1177,58 @@ private struct TrackScreen: View {
             } message: {
                 Text("This will discard the current Track checklist without saving it.")
             }
+            .sheet(isPresented: $isShowingExerciseTimer) {
+                TrackExerciseTimerView(
+                    title: activeExerciseTitle,
+                    instructions: store.exerciseLibrary.first { lib in
+                        lib.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                            .caseInsensitiveCompare(activeExerciseTitle.trimmingCharacters(in: .whitespacesAndNewlines)) == .orderedSame
+                    }?.instructions ?? "",
+                    onComplete: { elapsed in
+                        if let id = activeExerciseID {
+                            store.completeTrackedExercise(id: id, durationSeconds: elapsed)
+                            store.persist()
+                        }
+                        isShowingExerciseTimer = false
+                    },
+                    onCancel: {
+                        isShowingExerciseTimer = false
+                    }
+                )
+            }
+            .sheet(isPresented: $isShowingSetupSheet) {
+                Group {
+                    if let activityType = setupActivityType {
+                        TrackSetupSheet(
+                            activityType: activityType,
+                            selectedBodyParts: $setupSelectedBodyParts,
+                            selectedLocationID: $selectedLocationID,
+                            selectedDurationMinutes: $selectedDurationMinutes,
+                            locations: store.locations,
+                            allowedBodyParts: allowedTrainingBodyAreas(for: activityType),
+                            onCancel: {
+                                isShowingSetupSheet = false
+                            },
+                            onStart: {
+                                let focusAreas = Array(setupSelectedBodyParts)
+                                guard !focusAreas.isEmpty else { return }
+
+                                _ = store.startTrackedWorkout(
+                                    activityType: activityType,
+                                    focusAreas: focusAreas,
+                                    targetDate: .now,
+                                    locationID: selectedLocationID,
+                                    durationMinutes: selectedDurationMinutes
+                                )
+                                store.persist()
+                                isShowingSetupSheet = false
+                            }
+                        )
+                    } else {
+                        EmptyView()
+                    }
+                }
+            }
         }
     }
 
@@ -744,75 +1236,206 @@ private struct TrackScreen: View {
         store.trackedWorkoutSession
     }
 
-    private var nextPlannedWorkout: TrackPlannedLaunchOption? {
-        let calendar = Calendar.current
-        let completedDays = Set(
-            store.history
-                .filter {
-                    $0.activityType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "traditional strength training"
-                }
-                .map { calendar.startOfDay(for: $0.date) }
-        )
+    private func prepareSetup(for activityType: String) {
+        setupActivityType = activityType
 
-        guard let startOfToday = calendar.dateInterval(of: .day, for: .now)?.start else {
-            return nil
+        let allowedAreas = allowedTrainingBodyAreas(for: activityType)
+        let today = store.weekday(for: .now)
+        if let template = trainingTemplate(for: activityType) {
+            let scheduledAreas = template.bodyPartSchedules
+                .filter { $0.weekdays.contains(today) }
+                .map(\.bodyPart)
+            if !scheduledAreas.isEmpty {
+                setupSelectedBodyParts = Set(scheduledAreas.filter { allowedAreas.contains($0) })
+            } else {
+                setupSelectedBodyParts = Set(allowedAreas)
+            }
+        } else {
+            setupSelectedBodyParts = Set(allowedAreas)
         }
 
-        for offset in 0..<21 {
-            guard let date = calendar.date(byAdding: .day, value: offset, to: startOfToday) else {
-                continue
-            }
-
-            let dayStart = calendar.startOfDay(for: date)
-            guard !completedDays.contains(dayStart), let routineDay = store.routineDay(for: date) else {
-                continue
-            }
-
-            let defaultLocationID = routineDay.defaultLocationID
-            let locationName = store.locations.first(where: { $0.id == defaultLocationID })?.name ?? "No location"
-            let durationMinutes = routineDay.defaultDurationMinutes ?? 20
-
-            return TrackPlannedLaunchOption(
-                date: date,
-                routineDay: routineDay,
-                focusSummary: routineDay.focusSummary,
-                defaultLocationID: defaultLocationID,
-                locationName: locationName,
-                durationMinutes: durationMinutes
-            )
-        }
-
-        return nil
+        selectedLocationID = selectedLocationID ?? store.defaultLocation?.id ?? store.locations.first?.id
+        selectedDurationMinutes = max(selectedDurationMinutes, 5)
+        isShowingSetupSheet = true
     }
 
-    @ViewBuilder
-    private var trackLocationAndDurationControls: some View {
-        Picker("Location", selection: $selectedLocationID) {
-            ForEach(store.locations) { location in
-                Text(location.name).tag(Optional(location.id))
-            }
+    private func trainingTemplate(for activityType: String) -> RoutineActivity? {
+        store.routineActivities.first {
+            $0.isTrainingTemplate &&
+            $0.activityType.trimmingCharacters(in: .whitespacesAndNewlines)
+                .caseInsensitiveCompare(activityType) == .orderedSame
         }
-        .pickerStyle(.menu)
+    }
 
-        Picker("Planned Duration", selection: $selectedDurationMinutes) {
-            ForEach([10, 15, 20, 30, 45, 60], id: \.self) { duration in
-                Text("\(duration) min").tag(duration)
-            }
+    private func allowedTrainingBodyAreas(for activityType: String) -> [ExerciseBodyArea] {
+        let normalized = activityType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if normalized == "core training" {
+            return [.glutes, .abs]
         }
-        .pickerStyle(.menu)
+
+        return ExerciseBodyArea.allCases.filter { area in
+            area != .glutes && area != .abs
+        }
+    }
+
+    private func formattedElapsedTime(from interval: TimeInterval) -> String {
+        let totalSeconds = max(Int(interval), 0)
+        let seconds = totalSeconds % 60
+        let minutes = (totalSeconds / 60) % 60
+        let hours = totalSeconds / 3600
+
+        if hours > 0 {
+            return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            return String(format: "%02d:%02d", minutes, seconds)
+        }
+    }
+
+}
+
+private struct TrackSetupSheet: View {
+    let activityType: String
+    @Binding var selectedBodyParts: Set<ExerciseBodyArea>
+    @Binding var selectedLocationID: UUID?
+    @Binding var selectedDurationMinutes: Int
+    let locations: [LocationItem]
+    let allowedBodyParts: [ExerciseBodyArea]
+    let onCancel: () -> Void
+    let onStart: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            ScreenScrollContainer {
+                VStack(alignment: .leading, spacing: 16) {
+                    AppCard {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(activityType)
+                                .font(.headline)
+                            Text("Choose which body parts to emphasize for this session, then pick where and how long you want to train.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    SectionTitle(title: "Target Body Parts")
+                    AppCard {
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(allowedBodyParts) { area in
+                                Toggle(
+                                    area.title,
+                                    isOn: Binding(
+                                        get: { selectedBodyParts.contains(area) },
+                                        set: { isSelected in
+                                            if isSelected {
+                                                selectedBodyParts.insert(area)
+                                            } else {
+                                                selectedBodyParts.remove(area)
+                                            }
+                                        }
+                                    )
+                                )
+                            }
+                        }
+                    }
+
+                    SectionTitle(title: "Location & Duration")
+                    AppCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Picker("Location", selection: $selectedLocationID) {
+                                ForEach(locations) { location in
+                                    Text(location.name).tag(Optional(location.id))
+                                }
+                            }
+
+                            Picker("Duration", selection: $selectedDurationMinutes) {
+                                ForEach([10, 15, 20, 30, 45], id: \.self) { minutes in
+                                    Text("\(minutes) min").tag(minutes)
+                                }
+                            }
+                        }
+                    }
+
+                    HStack(spacing: 12) {
+                        WideActionButton(title: "Cancel", tint: .gray, action: onCancel)
+                        WideActionButton(title: "Start Workout", tint: .blue) {
+                            onStart()
+                        }
+                        .disabled(selectedBodyParts.isEmpty)
+                    }
+                }
+            }
+            .navigationTitle("Track Setup")
+            .navigationBarTitleDisplayMode(.inline)
+        }
     }
 }
 
-private struct TrackPlannedLaunchOption {
-    let date: Date
-    let routineDay: RoutineDay
-    let focusSummary: String
-    let defaultLocationID: UUID?
-    let locationName: String
-    let durationMinutes: Int
+private struct TrackExerciseTimerView: View {
+    let title: String
+    let instructions: String
+    let onComplete: (TimeInterval) -> Void
+    let onCancel: () -> Void
 
-    var dateText: String {
-        date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day().year()).uppercased()
+    @State private var startDate = Date()
+
+    var body: some View {
+        NavigationStack {
+            ScreenScrollContainer {
+                AppCard {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text(title)
+                            .font(.headline)
+
+                        if !instructions.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text(instructions)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+
+                        Text("Elapsed Time")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        TimelineView(.periodic(from: startDate, by: 0.1)) { context in
+                            let elapsed = context.date.timeIntervalSince(startDate)
+                            Text(formattedElapsedTime(from: elapsed))
+                                .font(.system(size: 42, weight: .bold, design: .monospaced))
+                                .frame(maxWidth: .infinity, alignment: .center)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+
+                        HStack(spacing: 12) {
+                            WideActionButton(title: "Cancel", tint: .gray) {
+                                onCancel()
+                            }
+                            WideActionButton(title: "Complete", tint: .green) {
+                                let elapsed = Date().timeIntervalSince(startDate)
+                                onComplete(elapsed)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Track Exercise")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+
+    private func formattedElapsedTime(from interval: TimeInterval) -> String {
+        let totalHundredths = max(Int((interval * 100).rounded()), 0)
+        let hundredths = totalHundredths % 100
+        let totalSeconds = totalHundredths / 100
+        let seconds = totalSeconds % 60
+        let minutes = (totalSeconds / 60) % 60
+        let hours = totalSeconds / 3600
+
+        if hours > 0 {
+            return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            return String(format: "%02d:%02d.%02d", minutes, seconds, hundredths)
+        }
     }
 }
 
@@ -883,8 +1506,10 @@ private struct TrackOtherExercisePicker: View {
     }
 }
 
-private struct TrackPlannedStartSheet: View {
-    let locationName: String
+private struct TrackSelectedRoutinesStartSheet: View {
+    let routineActivities: [RoutineActivity]
+    @Binding var routineWeights: [UUID: Int]
+    let recommendedRoutineWeights: [UUID: Int]
     @Binding var selectedLocationID: UUID?
     @Binding var selectedDurationMinutes: Int
     let locations: [LocationItem]
@@ -898,29 +1523,90 @@ private struct TrackPlannedStartSheet: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Confirm Workout Details")
                             .font(.headline)
+                        Text(routineSummary)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                         Text("Double-check the location and duration before generating your suggested workout.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
 
-                        Picker("Location", selection: $selectedLocationID) {
-                            ForEach(locations) { location in
-                                Text(location.name).tag(Optional(location.id))
-                            }
-                        }
-                        .pickerStyle(.menu)
+                        if routineActivities.count > 1 {
+                            Divider()
 
-                        Picker("Planned Duration", selection: $selectedDurationMinutes) {
-                            ForEach([10, 15, 20, 30, 45, 60], id: \.self) { duration in
-                                Text("\(duration) min").tag(duration)
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack {
+                                    Text("Plan Mix")
+                                        .font(.subheadline.weight(.semibold))
+                                    Spacer()
+                                    Button("Use Recommended") {
+                                        routineWeights = recommendedRoutineWeights
+                                    }
+                                    .font(.footnote.weight(.medium))
+                                }
+
+                                Text("Recommended values balance what you have already trained this week with your current focus.")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+
+                                RoutineMixSlider(
+                                    routineTitles: routineActivities.map(\.title),
+                                    weights: Binding(
+                                        get: { resolvedRoutineWeights },
+                                        set: { newValue in
+                                            routineWeights = Dictionary(
+                                                uniqueKeysWithValues: zip(routineActivities.map(\.id), newValue)
+                                            )
+                                        }
+                                    )
+                                )
+
+                                VStack(alignment: .leading, spacing: 8) {
+                                    ForEach(Array(routineActivities.enumerated()), id: \.element.id) { index, routineActivity in
+                                        HStack {
+                                            Circle()
+                                                .fill(mixColor(for: index))
+                                                .frame(width: 10, height: 10)
+                                            Text(routineActivity.title)
+                                                .font(.subheadline.weight(.medium))
+                                            Spacer()
+                                            Text("\(resolvedRoutineWeights[safe: index] ?? 0)%")
+                                                .font(.footnote.weight(.semibold))
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                }
                             }
                         }
-                        .pickerStyle(.menu)
+
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Location")
+                                .font(.subheadline.weight(.semibold))
+
+                            Picker("Location", selection: $selectedLocationID) {
+                                ForEach(locations) { location in
+                                    Text(location.name).tag(Optional(location.id))
+                                }
+                            }
+                            .pickerStyle(.menu)
+                        }
+
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Duration")
+                                .font(.subheadline.weight(.semibold))
+
+                            Picker("Planned Duration", selection: $selectedDurationMinutes) {
+                                ForEach([10, 15, 20, 30, 45, 60], id: \.self) { duration in
+                                    Text("\(duration) min").tag(duration)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                        }
                     }
                 }
 
                 WideActionButton(title: "Start Workout", tint: .blue, action: onConfirm)
             }
-            .navigationTitle(locationName)
+            .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -929,64 +1615,216 @@ private struct TrackPlannedStartSheet: View {
             }
         }
     }
+
+    private var navigationTitle: String {
+        if routineActivities.count == 1 {
+            return routineActivities.first?.title ?? "Plan"
+        }
+
+        return "\(routineActivities.count) Plans"
+    }
+
+    private var routineSummary: String {
+        let uniqueFocusAreas = Array(Set(routineActivities.flatMap(\.focusAreas)))
+            .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+            .map(\.title)
+
+        if uniqueFocusAreas.isEmpty {
+            return routineActivities.map(\.title).joined(separator: ", ")
+        }
+
+        return uniqueFocusAreas.joined(separator: ", ")
+    }
+
+    private var resolvedRoutineWeights: [Int] {
+        normalizedWeights(
+            routineActivities.map { routineActivity in
+                routineWeights[routineActivity.id] ?? recommendedRoutineWeights[routineActivity.id] ?? 0
+            }
+        )
+    }
+
+    private func normalizedWeights(_ inputWeights: [Int]) -> [Int] {
+        guard !inputWeights.isEmpty else { return [] }
+
+        let sanitizedWeights = inputWeights.map { max($0, 0) }
+        let total = sanitizedWeights.reduce(0, +)
+        let workingWeights = total == 0 ? Array(repeating: 1, count: sanitizedWeights.count) : sanitizedWeights
+        let denominator = max(workingWeights.reduce(0, +), 1)
+
+        var baseAllocations: [Int] = []
+        var remainders: [(index: Int, remainder: Double)] = []
+        var used = 0
+
+        for (index, weight) in workingWeights.enumerated() {
+            let exact = (Double(weight) / Double(denominator)) * 100
+            let base = Int(exact.rounded(.down))
+            baseAllocations.append(base)
+            used += base
+            remainders.append((index, exact - Double(base)))
+        }
+
+        let remaining = max(100 - used, 0)
+        for item in remainders.sorted(by: { lhs, rhs in
+            if lhs.remainder != rhs.remainder {
+                return lhs.remainder > rhs.remainder
+            }
+            return lhs.index < rhs.index
+        }).prefix(remaining) {
+            baseAllocations[item.index] += 1
+        }
+
+        return baseAllocations
+    }
+
+    private func mixColor(for index: Int) -> Color {
+        let palette: [Color] = [.blue, .green, .orange, .purple]
+        return palette[index % palette.count]
+    }
 }
 
-private struct TrackUnplannedStartSheet: View {
-    @Binding var selectedLocationID: UUID?
-    @Binding var selectedDurationMinutes: Int
-    @Binding var selectedFocusAreas: Set<ExerciseBodyArea>
-    let locations: [LocationItem]
-    let onConfirm: () -> Void
-    let onCancel: () -> Void
+private struct RoutineMixSlider: View {
+    let routineTitles: [String]
+    @Binding var weights: [Int]
+
+    private let step: Int = 5
+    private let trackHeight: CGFloat = 12
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Target Body Parts") {
-                    ForEach(ExerciseBodyArea.allCases) { area in
-                        Toggle(
-                            area.title,
-                            isOn: Binding(
-                                get: { selectedFocusAreas.contains(area) },
-                                set: { isSelected in
-                                    if isSelected {
-                                        selectedFocusAreas.insert(area)
-                                    } else {
-                                        selectedFocusAreas.remove(area)
-                                    }
-                                }
-                            )
-                        )
+        GeometryReader { geometry in
+            let totalWidth = max(geometry.size.width, 1)
+            let boundaries = cumulativeBoundaries(for: normalizedWeights)
+
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.secondary.opacity(0.18))
+                    .frame(height: trackHeight)
+
+                HStack(spacing: 0) {
+                    ForEach(Array(normalizedWeights.enumerated()), id: \.offset) { index, weight in
+                        Rectangle()
+                            .fill(mixColor(for: index))
+                            .frame(width: max(totalWidth * CGFloat(weight) / 100, weight == 0 ? 0 : 6))
                     }
                 }
+                .clipShape(Capsule())
+                .frame(height: trackHeight)
 
-                Section("Workout Details") {
-                    Picker("Location", selection: $selectedLocationID) {
-                        ForEach(locations) { location in
-                            Text(location.name).tag(Optional(location.id))
-                        }
+                ForEach(Array(boundaries.enumerated()), id: \.offset) { index, boundary in
+                    let xPosition = min(max(totalWidth * boundary, 0), totalWidth)
+
+                    ZStack {
+                        Circle()
+                            .fill(Color(.systemBackground))
+                            .frame(width: 28, height: 28)
+                            .shadow(color: .black.opacity(0.18), radius: 4, x: 0, y: 2)
+
+                        Circle()
+                            .stroke(Color.blue, lineWidth: 2)
+                            .frame(width: 28, height: 28)
+
+                        Image(systemName: "line.3.horizontal")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(.blue)
                     }
-
-                    Picker("Planned Duration", selection: $selectedDurationMinutes) {
-                        ForEach([10, 15, 20, 30, 45, 60], id: \.self) { duration in
-                            Text("\(duration) min").tag(duration)
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Unplanned Workout")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel", action: onCancel)
-                }
-
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Start", action: onConfirm)
-                        .disabled(selectedFocusAreas.isEmpty)
+                    .position(x: xPosition, y: trackHeight / 2)
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { value in
+                                let rawFraction = min(max(value.location.x / totalWidth, 0), 1)
+                                let steppedFraction = stepped(rawFraction)
+                                updateBoundary(at: index, to: steppedFraction)
+                            }
+                    )
                 }
             }
         }
+        .frame(height: 28)
+        .overlay(alignment: .bottomLeading) {
+            HStack(spacing: 0) {
+                ForEach(0..<21, id: \.self) { _ in
+                    Rectangle()
+                        .fill(Color.secondary.opacity(0.25))
+                        .frame(width: 1, height: 6)
+                    Spacer(minLength: 0)
+                }
+            }
+            .padding(.horizontal, 1)
+            .offset(y: 10)
+        }
+    }
+
+    private var normalizedWeights: [Int] {
+        let sanitizedWeights = weights.map { max($0, 0) }
+        let total = sanitizedWeights.reduce(0, +)
+        let fallback = sanitizedWeights.isEmpty ? [] : Array(repeating: 100 / sanitizedWeights.count, count: sanitizedWeights.count)
+
+        if total == 100 {
+            return sanitizedWeights
+        }
+
+        if total == 0 {
+            var adjustedFallback = fallback
+            if !adjustedFallback.isEmpty {
+                adjustedFallback[0] += 100 - adjustedFallback.reduce(0, +)
+            }
+            return adjustedFallback
+        }
+
+        var scaled = sanitizedWeights.map { Int((Double($0) / Double(total) * 100).rounded(.down)) }
+        let remainder = 100 - scaled.reduce(0, +)
+        if remainder > 0, !scaled.isEmpty {
+            scaled[0] += remainder
+        }
+        return scaled
+    }
+
+    private func cumulativeBoundaries(for weights: [Int]) -> [CGFloat] {
+        guard weights.count > 1 else { return [] }
+
+        var runningTotal = 0
+        return weights.dropLast().map { weight in
+            runningTotal += weight
+            return CGFloat(runningTotal) / 100
+        }
+    }
+
+    private func stepped(_ fraction: CGFloat) -> CGFloat {
+        let rawPercentage = Double(fraction * 100)
+        let steppedPercentage = (rawPercentage / Double(step)).rounded() * Double(step)
+        return CGFloat(steppedPercentage / 100)
+    }
+
+    private func updateBoundary(at index: Int, to newBoundary: CGFloat) {
+        var boundaries = cumulativeBoundaries(for: normalizedWeights)
+        guard boundaries.indices.contains(index) else { return }
+
+        let lowerBound = index == 0 ? CGFloat(0) : boundaries[index - 1]
+        let upperBound = index == boundaries.count - 1 ? CGFloat(1) : boundaries[index + 1]
+        boundaries[index] = min(max(newBoundary, lowerBound), upperBound)
+
+        var rebuiltWeights: [Int] = []
+        var previousBoundary = CGFloat(0)
+        for boundary in boundaries {
+            rebuiltWeights.append(Int(((boundary - previousBoundary) * 100).rounded()))
+            previousBoundary = boundary
+        }
+        rebuiltWeights.append(max(100 - rebuiltWeights.reduce(0, +), 0))
+
+        if rebuiltWeights.count == weights.count {
+            weights = rebuiltWeights
+        }
+    }
+
+    private func mixColor(for index: Int) -> Color {
+        let palette: [Color] = [.blue, .green, .orange, .purple]
+        return palette[index % palette.count]
+    }
+}
+
+private extension Array {
+    subscript(safe index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
     }
 }
 
@@ -1150,12 +1988,14 @@ private struct StrengthWorkoutSummaryRow: View {
                 Spacer()
 
                 VStack(alignment: .trailing, spacing: 10) {
-                    Text(entry.statusTitle)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(entry.statusTint)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(entry.statusTint.opacity(0.12), in: Capsule())
+                    if !entry.statusTitle.isEmpty {
+                        Text(entry.statusTitle)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(entry.statusTint)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(entry.statusTint.opacity(0.12), in: Capsule())
+                    }
 
                     Image(systemName: "chevron.right")
                         .font(.footnote.weight(.semibold))
@@ -1167,7 +2007,7 @@ private struct StrengthWorkoutSummaryRow: View {
         .padding(.horizontal, -2)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(entry.statusTint.opacity(0.28), lineWidth: 1)
+                .stroke(entry.statusTitle.isEmpty ? Color.clear : entry.statusTint.opacity(0.28), lineWidth: 1)
         )
     }
 
@@ -1220,9 +2060,88 @@ private struct ReadOnlyWorkoutRow: View {
     }
 }
 
+private struct PlannedReadOnlyActivityRow: View {
+    let entry: ActivityEntry
+
+    var body: some View {
+        Text(rowText)
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .padding(.vertical, 2)
+    }
+
+    private var rowText: String {
+        "\(entry.title) • \(entry.detail)"
+    }
+}
+
+private struct UpcomingActivityRow: View {
+    let entry: ActivityEntry
+
+    private var isTrainingActivityTitle: Bool {
+        let t = entry.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return t == "traditional strength training" || t == "core training"
+    }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 8) {
+            Text(entry.title)
+                .font(isTrainingActivityTitle ? .footnote.weight(.bold) : .footnote)
+            Spacer(minLength: 8)
+            if !entry.statusTitle.isEmpty {
+                Text(entry.statusTitle)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(entry.statusTint)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(entry.statusTint.opacity(0.12), in: Capsule())
+            }
+        }
+    }
+}
+
+/// Line-item row for completed workouts in Today/Past (matches Upcoming style: title, label, chevron).
+private struct CompletedActivityRow: View {
+    let entry: ActivityEntry
+
+    private var isTrainingActivityTitle: Bool {
+        let t = entry.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return t == "traditional strength training" || t == "core training"
+    }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 8) {
+            Text(entry.title)
+                .font(isTrainingActivityTitle ? .footnote.weight(.bold) : .footnote)
+            Spacer(minLength: 8)
+            if !entry.statusTitle.isEmpty {
+                Text(entry.statusTitle)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(entry.statusTint)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(entry.statusTint.opacity(0.12), in: Capsule())
+            }
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+private struct UpcomingWorkoutDayGroup: Identifiable {
+    let date: Date
+    let strengthEntries: [ActivityEntry]
+    let otherEntries: [ActivityEntry]
+
+    var id: Date { date }
+}
+
 private struct PastWorkoutDayGroup: Identifiable {
     let date: Date
-    let strengthWorkout: CompletedWorkoutSummary?
+    let strengthWorkouts: [CompletedWorkoutSummary]
     let otherWorkouts: [CompletedWorkoutSummary]
 
     var id: Date { date }
@@ -1273,12 +2192,14 @@ private struct ActivityEntryDetailScreen: View {
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
-                        Text(entry.statusTitle)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(entry.statusTint)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(entry.statusTint.opacity(0.12), in: Capsule())
+                        if !entry.statusTitle.isEmpty {
+                            Text(entry.statusTitle)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(entry.statusTint)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(entry.statusTint.opacity(0.12), in: Capsule())
+                        }
                     }
 
                     Text(entry.subtitle)
@@ -1363,7 +2284,7 @@ private struct ActivityEntryDetailScreen: View {
                 }
             }
         }
-        .navigationTitle(entry.statusTitle)
+        .navigationTitle(entry.statusTitle.isEmpty ? entry.title : entry.statusTitle)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $editingExercise) { exercise in
             CompletedExerciseEditorView(
@@ -1673,7 +2594,7 @@ private struct SettingsScreen: View {
                     VStack(spacing: 10) {
                         if store.locations.isEmpty {
                             AppCard {
-                                EmptyCardMessage(message: "No saved locations yet. Add one so routines can set watch defaults.")
+                                EmptyCardMessage(message: "No saved locations yet. Add one so plans can set watch defaults.")
                             }
                         } else {
                             ForEach(store.locations) { location in
@@ -2234,83 +3155,147 @@ private struct GoalEditorView: View {
     }
 }
 
-private struct RoutineDayEditorView: View {
+private struct RoutineActivityEditorView: View {
     @Environment(\.dismiss) private var dismiss
 
     let title: String
-    let initialRoutineDay: RoutineDay?
-    let locations: [LocationItem]
-    let unavailableWeekdays: Set<Weekday>
-    let onSave: (RoutineDay) -> Void
+    let initialRoutineActivity: RoutineActivity?
+    let activityTypeOptions: [String]
+    let isTrainingActivity: Bool
+    let lockedActivityType: String?
+    let allowedBodyAreas: [ExerciseBodyArea]?
+    let onSave: (RoutineActivity) -> Void
 
-    @State private var selectedWeekday: Weekday
+    @State private var name: String
+    @State private var selectedActivityType: String
+    @State private var selectedWeekdays: Set<Weekday>
     @State private var selectedFocusAreas: Set<ExerciseBodyArea>
-    @State private var selectedLocationID: UUID?
-    @State private var selectedDurationMinutes: Int?
+    @State private var bodyPartWeekdays: [ExerciseBodyArea: Set<Weekday>]
 
     init(
         title: String,
-        initialRoutineDay: RoutineDay?,
-        locations: [LocationItem],
-        unavailableWeekdays: Set<Weekday>,
-        onSave: @escaping (RoutineDay) -> Void
+        initialRoutineActivity: RoutineActivity?,
+        activityTypeOptions: [String],
+        isTrainingActivity: Bool = false,
+        lockedActivityType: String? = nil,
+        allowedBodyAreas: [ExerciseBodyArea]? = nil,
+        onSave: @escaping (RoutineActivity) -> Void
     ) {
         self.title = title
-        self.initialRoutineDay = initialRoutineDay
-        self.locations = locations
-        self.unavailableWeekdays = unavailableWeekdays
+        self.initialRoutineActivity = initialRoutineActivity
+        self.activityTypeOptions = activityTypeOptions
+        self.isTrainingActivity = isTrainingActivity
+        self.lockedActivityType = lockedActivityType
+        self.allowedBodyAreas = allowedBodyAreas
         self.onSave = onSave
 
-        _selectedWeekday = State(initialValue: initialRoutineDay?.weekday ?? .monday)
-        _selectedFocusAreas = State(initialValue: Set(initialRoutineDay?.focusAreas ?? []))
-        _selectedLocationID = State(initialValue: initialRoutineDay?.defaultLocationID)
-        _selectedDurationMinutes = State(initialValue: initialRoutineDay?.defaultDurationMinutes)
+        _name = State(initialValue: initialRoutineActivity?.title ?? "")
+        _selectedActivityType = State(
+            initialValue: initialRoutineActivity?.activityType
+                ?? activityTypeOptions.first
+                ?? ""
+        )
+        _selectedWeekdays = State(initialValue: Set(initialRoutineActivity?.scheduledWeekdays ?? []))
+
+        let existingFocusAreas = initialRoutineActivity?.focusAreas ?? []
+        let defaultFocusAreas: [ExerciseBodyArea]
+        if !existingFocusAreas.isEmpty {
+            defaultFocusAreas = existingFocusAreas
+        } else if isTrainingActivity {
+            if let allowedBodyAreas, !allowedBodyAreas.isEmpty {
+                defaultFocusAreas = allowedBodyAreas
+            } else {
+                defaultFocusAreas = ExerciseBodyArea.allCases
+            }
+        } else {
+            defaultFocusAreas = []
+        }
+        _selectedFocusAreas = State(initialValue: Set(defaultFocusAreas))
+
+        let existingSchedules = initialRoutineActivity?.bodyPartSchedules ?? []
+        let initialBodyPartWeekdays: [ExerciseBodyArea: Set<Weekday>]
+        if !existingSchedules.isEmpty {
+            initialBodyPartWeekdays = Dictionary(
+                uniqueKeysWithValues: existingSchedules.map { pref in
+                    (pref.bodyPart, Set(pref.weekdays))
+                }
+            )
+        } else if let allowedBodyAreas, !allowedBodyAreas.isEmpty {
+            initialBodyPartWeekdays = Dictionary(
+                uniqueKeysWithValues: allowedBodyAreas.map { area in
+                    (area, [])
+                }
+            )
+        } else {
+            initialBodyPartWeekdays = Dictionary(
+                uniqueKeysWithValues: ExerciseBodyArea.allCases.map { area in
+                    (area, [])
+                }
+            )
+        }
+        _bodyPartWeekdays = State(initialValue: initialBodyPartWeekdays)
     }
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("Routine Day") {
-                    Picker("Weekday", selection: $selectedWeekday) {
-                        ForEach(availableWeekdays, id: \.self) { weekday in
-                            Text(weekday.title).tag(weekday)
+                if isTrainingActivity {
+                    Section {
+                        HStack {
+                            Text("Activity Type")
+                            Spacer()
+                            Text(lockedActivityType ?? selectedActivityType)
+                                .foregroundStyle(.secondary)
                         }
+                    }
+                } else {
+                    Section("Activity") {
+                        Picker("Activity Type", selection: $selectedActivityType) {
+                            ForEach(resolvedActivityTypeOptions, id: \.self) { activityType in
+                                Text(activityType).tag(activityType)
+                            }
+                        }
+                    }
+
+                    Section("Typical Days") {
+                        WeekdayChipsRow(selectedWeekdays: $selectedWeekdays)
                     }
                 }
 
-                Section("Target Body Parts") {
-                    ForEach(ExerciseBodyArea.allCases) { area in
-                        Toggle(
-                            area.title,
-                            isOn: Binding(
-                                get: { selectedFocusAreas.contains(area) },
-                                set: { isSelected in
-                                    if isSelected {
-                                        selectedFocusAreas.insert(area)
-                                    } else {
-                                        selectedFocusAreas.remove(area)
-                                    }
+                if isTrainingActivity {
+                    Section("Target Body Parts") {
+                        ForEach(allowedBodyAreas ?? ExerciseBodyArea.allCases) { area in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Toggle(
+                                    area.title,
+                                    isOn: Binding(
+                                        get: { selectedFocusAreas.contains(area) },
+                                        set: { isSelected in
+                                            if isSelected {
+                                                selectedFocusAreas.insert(area)
+                                            } else {
+                                                selectedFocusAreas.remove(area)
+                                            }
+                                        }
+                                    )
+                                )
+
+                                if selectedFocusAreas.contains(area) {
+                                    WeekdayChipsRow(
+                                        selectedWeekdays: Binding(
+                                            get: { bodyPartWeekdays[area] ?? [] },
+                                            set: { newValue in
+                                                bodyPartWeekdays[area] = newValue
+                                            }
+                                        )
+                                    )
+                                    .padding(.leading, 24)
                                 }
-                            )
-                        )
-                    }
-                }
-
-                Section("Watch Defaults") {
-                    Picker("Default Location", selection: $selectedLocationID) {
-                        Text("No default").tag(UUID?.none)
-                        ForEach(locations) { location in
-                            Text(location.name).tag(Optional(location.id))
-                        }
-                    }
-
-                    Picker("Default Duration", selection: $selectedDurationMinutes) {
-                        Text("No default").tag(Int?.none)
-                        ForEach([10, 15, 20, 30, 45, 60], id: \.self) { duration in
-                            Text("\(duration) min").tag(Optional(duration))
+                            }
                         }
                     }
                 }
+
             }
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
@@ -2323,14 +3308,29 @@ private struct RoutineDayEditorView: View {
 
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        let routineDay = RoutineDay(
-                            id: initialRoutineDay?.id ?? UUID(),
-                            weekday: selectedWeekday,
-                            focusAreas: ExerciseBodyArea.allCases.filter { selectedFocusAreas.contains($0) },
-                            defaultLocationID: selectedLocationID,
-                            defaultDurationMinutes: selectedDurationMinutes
+                        let routineActivity = RoutineActivity(
+                            id: initialRoutineActivity?.id ?? UUID(),
+                            title: isTrainingActivity
+                                ? (lockedActivityType ?? selectedActivityType)
+                                : selectedActivityType,
+                            activityType: lockedActivityType ?? selectedActivityType,
+                            focusAreas: isTrainingActivity
+                                ? ExerciseBodyArea.allCases.filter { selectedFocusAreas.contains($0) }
+                                : (initialRoutineActivity?.focusAreas ?? []),
+                            scheduledWeekdays: Weekday.allCases.filter { selectedWeekdays.contains($0) },
+                            defaultLocationID: nil,
+                            defaultDurationMinutes: nil,
+                            bodyPartSchedules: bodyPartWeekdays
+                                .filter { selectedFocusAreas.contains($0.key) && !$0.value.isEmpty }
+                                .map { entry in
+                                    BodyPartSchedulePreference(
+                                        bodyPart: entry.key,
+                                        weekdays: Array(entry.value).sorted { $0.rawValue < $1.rawValue }
+                                    )
+                                },
+                            isTrainingTemplate: initialRoutineActivity?.isTrainingTemplate ?? isTrainingActivity
                         )
-                        onSave(routineDay)
+                        onSave(routineActivity)
                         dismiss()
                     }
                     .disabled(!canSave)
@@ -2339,15 +3339,69 @@ private struct RoutineDayEditorView: View {
         }
     }
 
-    private var availableWeekdays: [Weekday] {
-        let currentWeekday = initialRoutineDay?.weekday
-        return Weekday.allCases.filter { weekday in
-            weekday == currentWeekday || !unavailableWeekdays.contains(weekday)
+    private var canSave: Bool {
+        if isTrainingActivity {
+            return !selectedFocusAreas.isEmpty
+        }
+
+        return !selectedActivityType.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var resolvedActivityTypeOptions: [String] {
+        let currentType = selectedActivityType.trimmingCharacters(in: .whitespacesAndNewlines)
+        return Array(Set(activityTypeOptions + [currentType]))
+            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .sorted { lhs, rhs in
+                lhs.localizedCaseInsensitiveCompare(rhs) == .orderedAscending
+            }
+    }
+}
+
+private struct WeekdayChipsRow: View {
+    @Binding var selectedWeekdays: Set<Weekday>
+
+    private let orderedWeekdays: [Weekday] = [
+        .monday, .tuesday, .wednesday, .thursday, .friday, .saturday, .sunday
+    ]
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(orderedWeekdays) { weekday in
+                let isSelected = selectedWeekdays.contains(weekday)
+                Text(shortLabel(for: weekday))
+                    .font(.caption2.weight(.semibold))
+                    .padding(.vertical, 4)
+                    .padding(.horizontal, 6)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
+                    )
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .stroke(isSelected ? Color.accentColor : Color.secondary.opacity(0.4), lineWidth: 1)
+                    )
+                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+                    .onTapGesture {
+                        if isSelected {
+                            selectedWeekdays.remove(weekday)
+                        } else {
+                            selectedWeekdays.insert(weekday)
+                        }
+                    }
+            }
         }
     }
 
-    private var canSave: Bool {
-        !selectedFocusAreas.isEmpty && !availableWeekdays.isEmpty
+    private func shortLabel(for weekday: Weekday) -> String {
+        switch weekday {
+        case .monday: return "M"
+        case .tuesday: return "T"
+        case .wednesday: return "W"
+        case .thursday: return "Th"
+        case .friday: return "F"
+        case .saturday: return "Sa"
+        case .sunday: return "Su"
+        }
     }
 }
 

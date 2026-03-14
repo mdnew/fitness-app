@@ -73,6 +73,12 @@ struct RecurringActivityItem: Identifiable, Hashable, Codable {
     var isDetectedFromHealth: Bool
 }
 
+struct PlannedActivityItem: Identifiable, Hashable, Codable {
+    let id: UUID
+    var activityType: String
+    var date: Date
+}
+
 struct GoalItem: Identifiable, Hashable, Codable {
     let id: UUID
     var title: String
@@ -237,6 +243,103 @@ struct RoutineDay: Identifiable, Hashable, Codable {
     }
 }
 
+struct RoutineActivity: Identifiable, Hashable, Codable {
+    let id: UUID
+    var title: String
+    var activityType: String
+    var focusAreas: [ExerciseBodyArea]
+    var scheduledWeekdays: [Weekday]
+    var defaultLocationID: UUID?
+    var defaultDurationMinutes: Int?
+    var bodyPartSchedules: [BodyPartSchedulePreference]
+    var isTrainingTemplate: Bool
+
+    var focusSummary: String {
+        guard !focusAreas.isEmpty else { return "No targets selected" }
+        return focusAreas.map(\.title).joined(separator: ", ")
+    }
+
+    var scheduleSummary: String {
+        let weekdayTitles = scheduledWeekdays
+            .sorted { $0.rawValue < $1.rawValue }
+            .map(\.title)
+        return weekdayTitles.joined(separator: ", ")
+    }
+
+    init(
+        id: UUID,
+        title: String,
+        activityType: String,
+        focusAreas: [ExerciseBodyArea],
+        scheduledWeekdays: [Weekday],
+        defaultLocationID: UUID?,
+        defaultDurationMinutes: Int?,
+        bodyPartSchedules: [BodyPartSchedulePreference] = [],
+        isTrainingTemplate: Bool = false
+    ) {
+        self.id = id
+        self.title = title
+        self.activityType = activityType
+        self.focusAreas = focusAreas
+        self.scheduledWeekdays = scheduledWeekdays
+        self.defaultLocationID = defaultLocationID
+        self.defaultDurationMinutes = defaultDurationMinutes
+        self.bodyPartSchedules = bodyPartSchedules
+        self.isTrainingTemplate = isTrainingTemplate
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        activityType = try container.decodeIfPresent(String.self, forKey: .activityType) ?? "Traditional Strength Training"
+        focusAreas = try container.decode([ExerciseBodyArea].self, forKey: .focusAreas)
+        scheduledWeekdays = try container.decode([Weekday].self, forKey: .scheduledWeekdays)
+        defaultLocationID = try container.decodeIfPresent(UUID.self, forKey: .defaultLocationID)
+        defaultDurationMinutes = try container.decodeIfPresent(Int.self, forKey: .defaultDurationMinutes)
+        bodyPartSchedules = try container.decodeIfPresent([BodyPartSchedulePreference].self, forKey: .bodyPartSchedules) ?? []
+        isTrainingTemplate = try container.decodeIfPresent(Bool.self, forKey: .isTrainingTemplate) ?? false
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case activityType
+        case focusAreas
+        case scheduledWeekdays
+        case defaultLocationID
+        case defaultDurationMinutes
+        case bodyPartSchedules
+        case isTrainingTemplate
+    }
+}
+
+struct BodyPartSchedulePreference: Identifiable, Hashable, Codable {
+    let id: UUID
+    var bodyPart: ExerciseBodyArea
+    var weekdays: [Weekday]
+
+    init(id: UUID = UUID(), bodyPart: ExerciseBodyArea, weekdays: [Weekday]) {
+        self.id = id
+        self.bodyPart = bodyPart
+        self.weekdays = weekdays
+    }
+}
+
+struct ScheduledRoutineActivity: Identifiable, Hashable {
+    let routineActivity: RoutineActivity
+    let date: Date
+
+    var id: String {
+        "\(routineActivity.id.uuidString)-\(Calendar.current.startOfDay(for: date).timeIntervalSince1970)"
+    }
+
+    var title: String { routineActivity.title }
+    var focusSummary: String { routineActivity.focusSummary }
+    var locationID: UUID? { routineActivity.defaultLocationID }
+    var durationMinutes: Int? { routineActivity.defaultDurationMinutes }
+}
+
 enum ExerciseMovementPattern: String, CaseIterable, Codable, Identifiable {
     case squat
     case hinge
@@ -395,18 +498,72 @@ struct TrackedExerciseState: Identifiable, Hashable, Codable {
     let id: UUID
     var plannedExercise: PlannedExercise
     var isCompleted: Bool
+    /// Time spent on this exercise when completed (seconds). Nil if not completed or legacy.
+    var completedDurationSeconds: TimeInterval? = nil
 }
 
 struct TrackedWorkoutSession: Identifiable, Hashable, Codable {
     let id: UUID
     var startedAt: Date
-    var routineDayID: UUID
+    var routineActivityID: UUID?
     var title: String
+    var activityType: String
     var summary: String
     var plannedDurationMinutes: Int
     var locationID: UUID?
     var locationName: String
     var exercises: [TrackedExerciseState]
+
+    init(
+        id: UUID,
+        startedAt: Date,
+        routineActivityID: UUID?,
+        title: String,
+        activityType: String,
+        summary: String,
+        plannedDurationMinutes: Int,
+        locationID: UUID?,
+        locationName: String,
+        exercises: [TrackedExerciseState]
+    ) {
+        self.id = id
+        self.startedAt = startedAt
+        self.routineActivityID = routineActivityID
+        self.title = title
+        self.activityType = activityType
+        self.summary = summary
+        self.plannedDurationMinutes = plannedDurationMinutes
+        self.locationID = locationID
+        self.locationName = locationName
+        self.exercises = exercises
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        startedAt = try container.decode(Date.self, forKey: .startedAt)
+        routineActivityID = try container.decodeIfPresent(UUID.self, forKey: .routineActivityID)
+        title = try container.decode(String.self, forKey: .title)
+        activityType = try container.decodeIfPresent(String.self, forKey: .activityType) ?? "Traditional Strength Training"
+        summary = try container.decode(String.self, forKey: .summary)
+        plannedDurationMinutes = try container.decode(Int.self, forKey: .plannedDurationMinutes)
+        locationID = try container.decodeIfPresent(UUID.self, forKey: .locationID)
+        locationName = try container.decode(String.self, forKey: .locationName)
+        exercises = try container.decode([TrackedExerciseState].self, forKey: .exercises)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case startedAt
+        case routineActivityID
+        case title
+        case activityType
+        case summary
+        case plannedDurationMinutes
+        case locationID
+        case locationName
+        case exercises
+    }
 }
 
 struct PendingTrackedWorkoutMerge: Identifiable, Hashable, Codable {
@@ -481,11 +638,12 @@ struct CompletedWorkoutSummary: Identifiable, Hashable, Codable {
 struct AppSnapshot: Codable {
     var events: [EventItem]
     var recurringActivities: [RecurringActivityItem]
+    var plannedActivities: [PlannedActivityItem]
     var selectedFocusActivityType: String?
     var goals: [GoalItem]
     var equipmentCatalog: [EquipmentItem]
     var locations: [LocationItem]
-    var routineDays: [RoutineDay]
+    var routineActivities: [RoutineActivity]
     var exerciseLibrary: [ExerciseLibraryItem]
     var currentWorkout: WorkoutPlan
     var trackedWorkoutSession: TrackedWorkoutSession?
@@ -495,11 +653,12 @@ struct AppSnapshot: Codable {
     init(
         events: [EventItem],
         recurringActivities: [RecurringActivityItem],
+        plannedActivities: [PlannedActivityItem],
         selectedFocusActivityType: String?,
         goals: [GoalItem],
         equipmentCatalog: [EquipmentItem],
         locations: [LocationItem],
-        routineDays: [RoutineDay],
+        routineActivities: [RoutineActivity],
         exerciseLibrary: [ExerciseLibraryItem],
         currentWorkout: WorkoutPlan,
         trackedWorkoutSession: TrackedWorkoutSession?,
@@ -508,11 +667,12 @@ struct AppSnapshot: Codable {
     ) {
         self.events = events
         self.recurringActivities = recurringActivities
+        self.plannedActivities = plannedActivities
         self.selectedFocusActivityType = selectedFocusActivityType
         self.goals = goals
         self.equipmentCatalog = equipmentCatalog
         self.locations = locations
-        self.routineDays = routineDays
+        self.routineActivities = routineActivities
         self.exerciseLibrary = exerciseLibrary
         self.currentWorkout = currentWorkout
         self.trackedWorkoutSession = trackedWorkoutSession
@@ -524,11 +684,27 @@ struct AppSnapshot: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         events = try container.decode([EventItem].self, forKey: .events)
         recurringActivities = try container.decode([RecurringActivityItem].self, forKey: .recurringActivities)
+        plannedActivities = try container.decodeIfPresent([PlannedActivityItem].self, forKey: .plannedActivities) ?? []
         selectedFocusActivityType = try container.decodeIfPresent(String.self, forKey: .selectedFocusActivityType)
         goals = try container.decode([GoalItem].self, forKey: .goals)
         equipmentCatalog = try container.decodeIfPresent([EquipmentItem].self, forKey: .equipmentCatalog) ?? []
         locations = try container.decode([LocationItem].self, forKey: .locations)
-        routineDays = try container.decode([RoutineDay].self, forKey: .routineDays)
+        if let decodedActivities = try container.decodeIfPresent([RoutineActivity].self, forKey: .routineActivities) {
+            routineActivities = decodedActivities
+        } else {
+            let legacyRoutineDays = try container.decodeIfPresent([RoutineDay].self, forKey: .routineDays) ?? []
+            routineActivities = legacyRoutineDays.map { routineDay in
+                RoutineActivity(
+                    id: routineDay.id,
+                    title: routineDay.focusSummary,
+                    activityType: "Traditional Strength Training",
+                    focusAreas: routineDay.focusAreas,
+                    scheduledWeekdays: [routineDay.weekday],
+                    defaultLocationID: routineDay.defaultLocationID,
+                    defaultDurationMinutes: routineDay.defaultDurationMinutes
+                )
+            }
+        }
         exerciseLibrary = try container.decodeIfPresent([ExerciseLibraryItem].self, forKey: .exerciseLibrary) ?? []
         currentWorkout = try container.decode(WorkoutPlan.self, forKey: .currentWorkout)
         trackedWorkoutSession = try container.decodeIfPresent(TrackedWorkoutSession.self, forKey: .trackedWorkoutSession)
@@ -536,13 +712,32 @@ struct AppSnapshot: Codable {
         history = try container.decode([CompletedWorkoutSummary].self, forKey: .history)
     }
 
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(events, forKey: .events)
+        try container.encode(recurringActivities, forKey: .recurringActivities)
+        try container.encode(plannedActivities, forKey: .plannedActivities)
+        try container.encodeIfPresent(selectedFocusActivityType, forKey: .selectedFocusActivityType)
+        try container.encode(goals, forKey: .goals)
+        try container.encode(equipmentCatalog, forKey: .equipmentCatalog)
+        try container.encode(locations, forKey: .locations)
+        try container.encode(routineActivities, forKey: .routineActivities)
+        try container.encode(exerciseLibrary, forKey: .exerciseLibrary)
+        try container.encode(currentWorkout, forKey: .currentWorkout)
+        try container.encodeIfPresent(trackedWorkoutSession, forKey: .trackedWorkoutSession)
+        try container.encode(pendingTrackedWorkouts, forKey: .pendingTrackedWorkouts)
+        try container.encode(history, forKey: .history)
+    }
+
     private enum CodingKeys: String, CodingKey {
         case events
         case recurringActivities
+        case plannedActivities
         case selectedFocusActivityType
         case goals
         case equipmentCatalog
         case locations
+        case routineActivities
         case routineDays
         case exerciseLibrary
         case currentWorkout
@@ -556,11 +751,12 @@ struct AppSnapshot: Codable {
 final class AppStore: ObservableObject {
     @Published var events: [EventItem]
     @Published var recurringActivities: [RecurringActivityItem]
+    @Published var plannedActivities: [PlannedActivityItem]
     @Published var selectedFocusActivityType: String?
     @Published var goals: [GoalItem]
     @Published var equipmentCatalog: [EquipmentItem]
     @Published var locations: [LocationItem]
-    @Published var routineDays: [RoutineDay]
+    @Published var routineActivities: [RoutineActivity]
     @Published var exerciseLibrary: [ExerciseLibraryItem]
     @Published var currentWorkout: WorkoutPlan
     @Published var trackedWorkoutSession: TrackedWorkoutSession?
@@ -573,11 +769,12 @@ final class AppStore: ObservableObject {
         let snapshot = Self.defaultSnapshot()
         events = snapshot.events
         recurringActivities = snapshot.recurringActivities
+        plannedActivities = snapshot.plannedActivities
         selectedFocusActivityType = snapshot.selectedFocusActivityType
         goals = snapshot.goals
         equipmentCatalog = snapshot.equipmentCatalog
         locations = snapshot.locations
-        routineDays = snapshot.routineDays
+        routineActivities = snapshot.routineActivities
         exerciseLibrary = Self.mergedExerciseLibrary(from: snapshot.exerciseLibrary)
         currentWorkout = snapshot.currentWorkout
         trackedWorkoutSession = snapshot.trackedWorkoutSession
@@ -589,11 +786,12 @@ final class AppStore: ObservableObject {
         AppSnapshot(
             events: events,
             recurringActivities: recurringActivities,
+            plannedActivities: plannedActivities,
             selectedFocusActivityType: selectedFocusActivityType,
             goals: goals,
             equipmentCatalog: equipmentCatalog,
             locations: locations,
-            routineDays: routineDays,
+            routineActivities: routineActivities,
             exerciseLibrary: exerciseLibrary,
             currentWorkout: currentWorkout,
             trackedWorkoutSession: trackedWorkoutSession,
@@ -605,11 +803,12 @@ final class AppStore: ObservableObject {
     func apply(snapshot: AppSnapshot) {
         events = snapshot.events
         recurringActivities = snapshot.recurringActivities
+        plannedActivities = snapshot.plannedActivities
         selectedFocusActivityType = snapshot.selectedFocusActivityType
         goals = snapshot.goals
         equipmentCatalog = snapshot.equipmentCatalog.isEmpty ? Self.defaultEquipmentCatalog() : snapshot.equipmentCatalog
         locations = snapshot.locations
-        routineDays = snapshot.routineDays
+        routineActivities = snapshot.routineActivities
         exerciseLibrary = Self.mergedExerciseLibrary(from: snapshot.exerciseLibrary)
         currentWorkout = snapshot.currentWorkout
         trackedWorkoutSession = snapshot.trackedWorkoutSession
@@ -654,13 +853,47 @@ final class AppStore: ObservableObject {
         let events: [EventItem] = []
 
         let recurringActivities: [RecurringActivityItem] = []
+        let plannedActivities: [PlannedActivityItem] = []
 
         let goals: [GoalItem] = []
 
-        let routineDays = [
-            RoutineDay(id: UUID(), weekday: .monday, focusAreas: [.legs, .glutes, .abs], defaultLocationID: eosID, defaultDurationMinutes: 20),
-            RoutineDay(id: UUID(), weekday: .wednesday, focusAreas: [.chest, .back, .shoulders, .biceps, .triceps], defaultLocationID: eosID, defaultDurationMinutes: 20),
-            RoutineDay(id: UUID(), weekday: .friday, focusAreas: [.legs, .chest, .back, .shoulders, .abs], defaultLocationID: eosID, defaultDurationMinutes: 20)
+        // Seed Training Activities so they are configured by default.
+        let allWeekdays = Array(Weekday.allCases)
+        let strengthAreas = ExerciseBodyArea.allCases.filter { area in
+            area != .glutes && area != .abs
+        }
+        let coreAreas: [ExerciseBodyArea] = [.glutes, .abs]
+
+        let strengthSchedules = strengthAreas.map {
+            BodyPartSchedulePreference(bodyPart: $0, weekdays: allWeekdays)
+        }
+        let coreSchedules = coreAreas.map {
+            BodyPartSchedulePreference(bodyPart: $0, weekdays: allWeekdays)
+        }
+
+        let routineActivities: [RoutineActivity] = [
+            RoutineActivity(
+                id: UUID(),
+                title: "Traditional Strength Training",
+                activityType: "Traditional Strength Training",
+                focusAreas: strengthAreas,
+                scheduledWeekdays: [],
+                defaultLocationID: nil,
+                defaultDurationMinutes: nil,
+                bodyPartSchedules: strengthSchedules,
+                isTrainingTemplate: true
+            ),
+            RoutineActivity(
+                id: UUID(),
+                title: "Core Training",
+                activityType: "Core Training",
+                focusAreas: coreAreas,
+                scheduledWeekdays: [],
+                defaultLocationID: nil,
+                defaultDurationMinutes: nil,
+                bodyPartSchedules: coreSchedules,
+                isTrainingTemplate: true
+            )
         ]
 
         let exerciseLibrary = Self.defaultExerciseLibrary()
@@ -684,11 +917,12 @@ final class AppStore: ObservableObject {
         return AppSnapshot(
             events: events,
             recurringActivities: recurringActivities,
+            plannedActivities: plannedActivities,
             selectedFocusActivityType: nil,
             goals: goals,
             equipmentCatalog: equipmentCatalog,
             locations: locations,
-            routineDays: routineDays,
+            routineActivities: routineActivities,
             exerciseLibrary: exerciseLibrary,
             currentWorkout: currentWorkout,
             trackedWorkoutSession: trackedWorkoutSession,
@@ -749,7 +983,21 @@ final class AppStore: ObservableObject {
             exercise("Preacher Bar Curl", .verticalPull, [.barbell, .bench], [.biceps], ["general"], .beginner, false, "Supported curling variation for biceps.", "Rest your upper arms on the pad, curl the bar up smoothly, then lower it to full extension."),
             exercise("Dead Bug", .core, [.bodyweight], [.abs], ["running", "general"], .beginner, false, "Foundational trunk-control pattern.", "Keep your low back pressed down, extend opposite arm and leg, then return and switch sides."),
             exercise("Side Plank", .core, [.bodyweight], [.abs, .glutes], ["running", "surfing", "general"], .beginner, false, "Simple anti-lateral-flexion core work.", "Prop yourself on one forearm, lift your hips into a straight line, and hold steady."),
-            exercise("Cable Crunch", .core, [.cable], [.abs], ["general"], .beginner, false, "Simple cable-based abdominal exercise.", "Kneel at the cable, curl your ribs toward your hips, then return without losing control.")
+            exercise("Cable Crunch", .core, [.cable], [.abs], ["general"], .beginner, false, "Simple cable-based abdominal exercise.", "Kneel at the cable, curl your ribs toward your hips, then return without losing control."),
+            exercise("Medicine Ball Situp to Twist", .core, [.medicineBall], [.abs], ["general"], .beginner, false, "Sit-up with rotation, holding a medicine ball.", "Lie on your back with the ball at your chest. Sit up and twist to one side, lower with control, then repeat to the other side."),
+            exercise("Medicine Ball Russian Twist", .core, [.medicineBall], [.abs], ["general"], .beginner, false, "Seated rotation with a medicine ball for obliques and core.", "Sit with knees bent, feet on the floor or lifted. Hold the ball and rotate your torso side to side, tapping the ball beside your hip each rep."),
+            exercise("Sit-up", .core, [.bodyweight], [.abs], ["running", "general"], .beginner, false, "Classic full sit-up from supine to seated.", "Lie on your back, knees bent. Curl up through your abs until you reach a seated position, then lower with control."),
+            exercise("Mountain Climbers", .core, [.bodyweight], [.abs], ["running", "general"], .beginner, false, "Dynamic plank with alternating knee drive.", "Start in a high plank. Drive one knee toward your chest, then switch legs in a running motion while keeping your hips stable."),
+            exercise("Beast Hold", .core, [.bodyweight], [.abs], ["general"], .beginner, false, "Static hold in beast position with knees off the floor.", "Start on hands and toes, knees under hips. Lift your knees an inch or two off the floor and hold a flat table-top position with a braced core."),
+            exercise("Plank", .core, [.bodyweight], [.abs], ["running", "surfing", "general"], .beginner, false, "Static anti-extension core hold.", "Hold a straight line from head to heels on your forearms or hands; keep your core braced and avoid sagging or piking."),
+            exercise("Bicycle Crunch", .core, [.bodyweight], [.abs], ["general"], .beginner, false, "Alternating elbow-to-knee crunch for abs and obliques.", "Lie on your back, hands behind your head. Bring one knee in while rotating your opposite elbow toward it, then switch sides in a pedaling motion."),
+            exercise("Hollow Hold", .core, [.bodyweight], [.abs], ["running", "general"], .intermediate, false, "Static hollow-body position for core strength.", "Lie on your back. Press your low back down, lift your shoulders and legs off the floor, and hold a curved hollow shape with arms and legs extended."),
+            exercise("Bird Dog", .core, [.bodyweight], [.abs, .glutes], ["running", "general"], .beginner, true, "Alternating arm and leg extension for core and glute stability.", "On hands and knees, extend one arm and the opposite leg until they are parallel to the floor. Hold briefly, then return and switch sides."),
+            exercise("Reverse Crunch", .core, [.bodyweight], [.abs], ["general"], .beginner, false, "Lower-ab focus by curling hips toward your ribs.", "Lie on your back, legs bent. Use your abs to curl your hips off the floor and toward your ribs, then lower with control."),
+            exercise("Glute Bridge", .hinge, [.bodyweight], [.glutes, .legs], ["running", "general"], .beginner, false, "Hip extension bridge for glute activation.", "Lie on your back, knees bent, feet flat. Drive through your heels to lift your hips until your body forms a straight line; squeeze your glutes at the top."),
+            exercise("Cable Kickback", .hinge, [.cable], [.glutes], ["general"], .beginner, true, "Single-leg hip extension at the cable for glute isolation.", "Attach an ankle strap to the cable. Stand facing the machine, extend one leg back against the resistance, then return with control."),
+            exercise("Frog Pump", .hinge, [.bodyweight], [.glutes], ["general"], .beginner, false, "Glute bridge with feet together and knees out for glute focus.", "Lie on your back with soles of your feet together and knees out. Drive through your heels to lift your hips, squeeze your glutes, then lower."),
+            exercise("Clam Shell", .core, [.bodyweight], [.glutes], ["running", "general"], .beginner, true, "Side-lying hip external rotation for glute medius.", "Lie on your side, knees bent. Keeping your feet together, lift your top knee toward the ceiling, then lower with control. Repeat on both sides.")
         ]
     }
 
@@ -792,12 +1040,12 @@ final class AppStore: ObservableObject {
         )
     }
 
-    var todayRoutineDay: RoutineDay? {
-        routineDay(for: .now)
+    var todayScheduledRoutineActivities: [ScheduledRoutineActivity] {
+        scheduledRoutineActivities(for: .now)
     }
 
     var defaultLocation: LocationItem? {
-        guard let locationID = todayRoutineDay?.defaultLocationID else { return nil }
+        guard let locationID = todayScheduledRoutineActivities.first?.locationID else { return nil }
         return locations.first { $0.id == locationID }
     }
 
@@ -806,9 +1054,38 @@ final class AppStore: ObservableObject {
         return Weekday(rawValue: ((weekdayIndex + 5) % 7) + 1) ?? .monday
     }
 
-    func routineDay(for date: Date) -> RoutineDay? {
+    func scheduledRoutineActivities(for date: Date) -> [ScheduledRoutineActivity] {
         let mappedWeekday = weekday(for: date)
-        return routineDays.first { $0.weekday == mappedWeekday }
+        return routineActivities
+            .filter { $0.scheduledWeekdays.contains(mappedWeekday) }
+            .sorted {
+                if $0.scheduledWeekdays.count != $1.scheduledWeekdays.count {
+                    return $0.scheduledWeekdays.count < $1.scheduledWeekdays.count
+                }
+
+                return $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+            }
+            .map { ScheduledRoutineActivity(routineActivity: $0, date: date) }
+    }
+
+    func upcomingScheduledRoutineActivities(limit: Int, startingFrom startDate: Date = .now) -> [ScheduledRoutineActivity] {
+        guard let startOfDay = Calendar.current.dateInterval(of: .day, for: startDate)?.start else {
+            return []
+        }
+
+        var scheduledActivities: [ScheduledRoutineActivity] = []
+        for offset in 0..<21 {
+            guard let date = Calendar.current.date(byAdding: .day, value: offset, to: startOfDay) else {
+                continue
+            }
+
+            scheduledActivities.append(contentsOf: scheduledRoutineActivities(for: date))
+            if scheduledActivities.count >= limit {
+                break
+            }
+        }
+
+        return Array(scheduledActivities.prefix(limit))
     }
 
     func setHealthSyncState(_ state: HealthSyncState) {
@@ -820,18 +1097,20 @@ final class AppStore: ObservableObject {
         selectedFocusActivityType = trimmedActivityType.isEmpty ? nil : trimmedActivityType
     }
 
-    func upsertRoutineDay(_ routineDay: RoutineDay) {
-        if let index = routineDays.firstIndex(where: { $0.id == routineDay.id }) {
-            routineDays[index] = routineDay
+    func upsertRoutineActivity(_ routineActivity: RoutineActivity) {
+        if let index = routineActivities.firstIndex(where: { $0.id == routineActivity.id }) {
+            routineActivities[index] = routineActivity
         } else {
-            routineDays.append(routineDay)
+            routineActivities.append(routineActivity)
         }
 
-        routineDays.sort { $0.weekday.rawValue < $1.weekday.rawValue }
+        routineActivities.sort {
+            $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+        }
     }
 
-    func removeRoutineDay(id: UUID) {
-        routineDays.removeAll { $0.id == id }
+    func removeRoutineActivity(id: UUID) {
+        routineActivities.removeAll { $0.id == id }
     }
 
     func moveGoals(fromOffsets: IndexSet, toOffset: Int) {
@@ -845,24 +1124,24 @@ final class AppStore: ObservableObject {
     func regenerateFutureActivities() {
         futureActivitiesLastRegeneratedAt = .now
 
-        guard let todayRoutineDay else { return }
+        guard let scheduledRoutineActivity = todayScheduledRoutineActivities.first else { return }
 
         currentWorkout = workoutPlan(
-            for: todayRoutineDay,
+            for: scheduledRoutineActivity.routineActivity,
             targetDate: .now,
-            locationID: todayRoutineDay.defaultLocationID
+            locationID: scheduledRoutineActivity.locationID
         )
     }
 
     @discardableResult
     func startTrackedWorkout(
-        for routineDay: RoutineDay,
+        for routineActivity: RoutineActivity,
         targetDate: Date = .now,
         locationID: UUID?,
         durationMinutes: Int? = nil
     ) -> TrackedWorkoutSession {
         let workoutPlan = workoutPlan(
-            for: routineDay,
+            for: routineActivity,
             targetDate: targetDate,
             locationID: locationID,
             durationMinutes: durationMinutes
@@ -871,8 +1150,9 @@ final class AppStore: ObservableObject {
         let session = TrackedWorkoutSession(
             id: UUID(),
             startedAt: targetDate,
-            routineDayID: routineDay.id,
-            title: routineDay.focusSummary,
+            routineActivityID: routineActivity.id,
+            title: routineActivity.title,
+            activityType: routineActivity.activityType,
             summary: "Track your suggested workout for \(locationName).",
             plannedDurationMinutes: workoutPlan.plannedDurationMinutes,
             locationID: workoutPlan.locationID,
@@ -889,21 +1169,180 @@ final class AppStore: ObservableObject {
 
     @discardableResult
     func startTrackedWorkout(
+        for routineActivities: [RoutineActivity],
+        routineWeights: [UUID: Int] = [:],
+        targetDate: Date = .now,
+        locationID: UUID?,
+        durationMinutes: Int? = nil
+    ) -> TrackedWorkoutSession {
+        let normalizedRoutineActivities = routineActivities.sorted {
+            $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+        }
+
+        if normalizedRoutineActivities.count == 1, let onlyRoutineActivity = normalizedRoutineActivities.first {
+            return startTrackedWorkout(
+                for: onlyRoutineActivity,
+                targetDate: targetDate,
+                locationID: locationID,
+                durationMinutes: durationMinutes
+            )
+        }
+
+        let combinedFocusAreas = Array(Set(normalizedRoutineActivities.flatMap(\.focusAreas)))
+            .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+        let combinedActivityType = combinedTrackedWorkoutActivityType(for: normalizedRoutineActivities)
+        let combinedTitle = normalizedRoutineActivities.map(\.title).joined(separator: " + ")
+        let aggregateRoutineActivity = RoutineActivity(
+            id: UUID(),
+            title: combinedTitle,
+            activityType: combinedActivityType,
+            focusAreas: combinedFocusAreas,
+            scheduledWeekdays: [],
+            defaultLocationID: locationID,
+            defaultDurationMinutes: durationMinutes
+        )
+        let resolvedDuration = durationMinutes ?? currentWorkout.plannedDurationMinutes
+        let totalDesiredCount = suggestedExerciseCount(for: resolvedDuration)
+        let plannedExerciseCounts = plannedExerciseCounts(
+            for: normalizedRoutineActivities,
+            totalDesiredCount: totalDesiredCount,
+            routineWeights: routineWeights
+        )
+        var combinedExercises: [PlannedExercise] = []
+
+        for routineActivity in normalizedRoutineActivities {
+            let desiredCount = plannedExerciseCounts[routineActivity.id] ?? 0
+            guard desiredCount > 0 else { continue }
+
+            let routineExercises = plannedExercises(
+                for: routineActivity,
+                targetDate: targetDate,
+                locationID: locationID,
+                desiredCount: desiredCount,
+                priorPlannedExerciseTitles: combinedExercises.map(\.title)
+            )
+
+            for exercise in routineExercises {
+                let alreadyIncluded = combinedExercises.contains {
+                    normalizedExerciseTitle($0.title) == normalizedExerciseTitle(exercise.title)
+                }
+                if !alreadyIncluded {
+                    combinedExercises.append(exercise)
+                }
+            }
+        }
+
+        if combinedExercises.count < totalDesiredCount {
+            let remainderExercises = plannedExercises(
+                for: aggregateRoutineActivity,
+                targetDate: targetDate,
+                locationID: locationID,
+                desiredCount: totalDesiredCount - combinedExercises.count,
+                priorPlannedExerciseTitles: combinedExercises.map(\.title)
+            )
+            combinedExercises.append(contentsOf: remainderExercises)
+        }
+
+        let workoutPlan = WorkoutPlan(
+            id: UUID(),
+            summary: "Planned strength session",
+            plannedDurationMinutes: resolvedDuration,
+            locationID: locationID,
+            exercises: Array(combinedExercises.prefix(totalDesiredCount))
+        )
+        let locationName = locations.first(where: { $0.id == workoutPlan.locationID })?.name ?? "No location"
+        let session = TrackedWorkoutSession(
+            id: UUID(),
+            startedAt: targetDate,
+            routineActivityID: nil,
+            title: combinedTitle,
+            activityType: combinedActivityType,
+            summary: "Track your suggested workout for \(locationName).",
+            plannedDurationMinutes: workoutPlan.plannedDurationMinutes,
+            locationID: workoutPlan.locationID,
+            locationName: locationName,
+            exercises: workoutPlan.exercises.map {
+                TrackedExerciseState(id: UUID(), plannedExercise: $0, isCompleted: false)
+            }
+        )
+
+        currentWorkout = workoutPlan
+        trackedWorkoutSession = session
+        return session
+    }
+
+    func recommendedRoutineWeights(
+        for routineActivities: [RoutineActivity],
+        targetDate: Date = .now
+    ) -> [UUID: Int] {
+        guard !routineActivities.isEmpty else { return [:] }
+
+        let calendar = Calendar.current
+        let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: targetDate)?.start ?? calendar.startOfDay(for: targetDate)
+        let weeklyStrengthWorkouts = history
+            .filter { workout in
+                workout.date >= startOfWeek &&
+                workout.date <= targetDate &&
+                workout.activityType.trimmingCharacters(in: .whitespacesAndNewlines).caseInsensitiveCompare("Traditional Strength Training") == .orderedSame
+            }
+
+        let weeklyBodyPartCounts = Dictionary(
+            weeklyStrengthWorkouts
+                .flatMap(\.exerciseDetails)
+                .compactMap(\.bodyPart)
+                .map { ($0, 1) },
+            uniquingKeysWith: +
+        )
+        let focusTag = normalizedActivityTag(selectedFocusActivityType)
+
+        let scoredWeights = routineActivities.map { routineActivity -> (UUID, Int) in
+            let routineAreas = Set(routineActivity.focusAreas)
+            let areaCoverageTotal = routineAreas.reduce(0) { partialResult, area in
+                partialResult + (weeklyBodyPartCounts[area] ?? 0)
+            }
+            let averageCoverage = routineAreas.isEmpty ? 0 : areaCoverageTotal / max(routineAreas.count, 1)
+            let freshnessScore = max(1, 8 - min(averageCoverage, 7))
+
+            let focusBonus: Int
+            if let focusTag {
+                let supportedCandidates = candidateExercises(for: routineActivity)
+                    .filter { focusSupportScore(for: $0, focusTag: focusTag) > 0 }
+                    .count
+                focusBonus = min(supportedCandidates, 4)
+            } else {
+                focusBonus = 0
+            }
+
+            return (routineActivity.id, freshnessScore + focusBonus)
+        }
+
+        return allocatedUnits(
+            for: routineActivities,
+            totalUnits: 100,
+            rawWeights: Dictionary(uniqueKeysWithValues: scoredWeights)
+        )
+    }
+
+    @discardableResult
+    func startTrackedWorkout(
+        activityType: String = "Traditional Strength Training",
         focusAreas: [ExerciseBodyArea],
         targetDate: Date = .now,
         locationID: UUID?,
         durationMinutes: Int? = nil
     ) -> TrackedWorkoutSession {
-        let adHocRoutineDay = RoutineDay(
+        let adHocRoutineActivity = RoutineActivity(
             id: UUID(),
-            weekday: weekday(for: targetDate),
+            title: "Unplanned Workout",
+            activityType: activityType,
             focusAreas: focusAreas,
+            scheduledWeekdays: [],
             defaultLocationID: locationID,
             defaultDurationMinutes: durationMinutes
         )
 
         return startTrackedWorkout(
-            for: adHocRoutineDay,
+            for: adHocRoutineActivity,
             targetDate: targetDate,
             locationID: locationID,
             durationMinutes: durationMinutes
@@ -918,6 +1357,17 @@ final class AppStore: ObservableObject {
         }
 
         trackedWorkoutSession?.exercises[index].isCompleted.toggle()
+    }
+
+    /// Mark a tracked exercise as completed with the given duration (e.g. from the exercise timer).
+    func completeTrackedExercise(id: UUID, durationSeconds: TimeInterval) {
+        guard let session = trackedWorkoutSession,
+              let index = session.exercises.firstIndex(where: { $0.id == id })
+        else {
+            return
+        }
+        trackedWorkoutSession?.exercises[index].isCompleted = true
+        trackedWorkoutSession?.exercises[index].completedDurationSeconds = max(0, durationSeconds)
     }
 
     func addTrackedExercise(_ exercise: ExerciseLibraryItem) {
@@ -940,6 +1390,7 @@ final class AppStore: ObservableObject {
         trackedWorkoutSession?.exercises = session.exercises.map { exercise in
             var updatedExercise = exercise
             updatedExercise.isCompleted = false
+            updatedExercise.completedDurationSeconds = nil
             return updatedExercise
         }
     }
@@ -952,6 +1403,15 @@ final class AppStore: ObservableObject {
         trackedWorkoutSession?.exercises.filter(\.isCompleted).count ?? 0
     }
 
+    /// Total time (seconds) from all completed exercises in the current tracked session.
+    var totalCompletedTrackedDuration: TimeInterval {
+        guard let session = trackedWorkoutSession else { return 0 }
+        return session.exercises
+            .filter(\.isCompleted)
+            .compactMap(\.completedDurationSeconds)
+            .reduce(0, +)
+    }
+
     func finalizeTrackedWorkoutSession(completedAt: Date = .now) -> PendingTrackedWorkoutMerge? {
         guard let session = trackedWorkoutSession else { return nil }
 
@@ -961,8 +1421,12 @@ final class AppStore: ObservableObject {
 
         guard !completedExerciseDetails.isEmpty else { return nil }
 
+        let totalSeconds = session.exercises
+            .filter(\.isCompleted)
+            .compactMap(\.completedDurationSeconds)
+            .reduce(0, +)
         let durationMinutes = max(
-            Int(completedAt.timeIntervalSince(session.startedAt).rounded() / 60),
+            totalSeconds > 0 ? Int(totalSeconds.rounded() / 60) : Int(completedAt.timeIntervalSince(session.startedAt).rounded() / 60),
             1
         )
         let pendingWorkout = PendingTrackedWorkoutMerge(
@@ -971,14 +1435,46 @@ final class AppStore: ObservableObject {
             completedAt: completedAt,
             durationMinutes: durationMinutes,
             locationName: session.locationName,
-            activityType: "Traditional Strength Training",
+            activityType: session.activityType,
             summary: session.title,
             exerciseDetails: completedExerciseDetails
         )
 
-        pendingTrackedWorkouts.insert(pendingWorkout, at: 0)
         trackedWorkoutSession = nil
         return pendingWorkout
+    }
+
+    /// Builds a pending merge from the current tracked session without clearing it.
+    /// Returns a value even when there are no completed exercises (empty exerciseDetails).
+    func buildPendingTrackedWorkoutMerge(completedAt: Date = .now) -> PendingTrackedWorkoutMerge? {
+        guard let session = trackedWorkoutSession else { return nil }
+
+        let completedExerciseDetails = session.exercises
+            .filter(\.isCompleted)
+            .map(makeCompletedExerciseDetail(from:))
+
+        let totalSeconds = session.exercises
+            .filter(\.isCompleted)
+            .compactMap(\.completedDurationSeconds)
+            .reduce(0, +)
+        let durationMinutes = max(
+            totalSeconds > 0 ? Int(totalSeconds.rounded() / 60) : Int(completedAt.timeIntervalSince(session.startedAt).rounded() / 60),
+            1
+        )
+        return PendingTrackedWorkoutMerge(
+            id: UUID(),
+            startedAt: session.startedAt,
+            completedAt: completedAt,
+            durationMinutes: durationMinutes,
+            locationName: session.locationName,
+            activityType: session.activityType,
+            summary: session.title,
+            exerciseDetails: completedExerciseDetails
+        )
+    }
+
+    func addPendingTrackedWorkout(_ pending: PendingTrackedWorkoutMerge) {
+        pendingTrackedWorkouts.append(pending)
     }
 
     func upsertCompletedWorkout(_ workout: CompletedWorkoutSummary) {
@@ -1030,8 +1526,8 @@ final class AppStore: ObservableObject {
     func removeLocation(id: UUID) {
         locations.removeAll { $0.id == id }
 
-        for index in routineDays.indices where routineDays[index].defaultLocationID == id {
-            routineDays[index].defaultLocationID = nil
+        for index in routineActivities.indices where routineActivities[index].defaultLocationID == id {
+            routineActivities[index].defaultLocationID = nil
         }
 
         if currentWorkout.locationID == id {
@@ -1164,17 +1660,17 @@ final class AppStore: ObservableObject {
     }
 
     func plannedExercises(
-        for routineDay: RoutineDay,
+        for routineActivity: RoutineActivity,
         targetDate: Date = .now,
         locationID: UUID? = nil,
         desiredCount: Int? = nil,
         priorPlannedExerciseTitles: [String] = []
     ) -> [PlannedExercise] {
-        let resolvedLocationID = locationID ?? routineDay.defaultLocationID
-        let relevantWorkouts = relevantCompletedWorkouts(for: routineDay, locationID: resolvedLocationID)
+        let resolvedLocationID = locationID ?? routineActivity.defaultLocationID
+        let relevantWorkouts = relevantCompletedWorkouts(for: routineActivity, locationID: resolvedLocationID)
 
         return recommendedExercises(
-            for: routineDay,
+            for: routineActivity,
             targetDate: targetDate,
             locationID: resolvedLocationID,
             desiredCount: desiredCount,
@@ -1190,18 +1686,18 @@ final class AppStore: ObservableObject {
     }
 
     func recommendedExercises(
-        for routineDay: RoutineDay,
+        for routineActivity: RoutineActivity,
         targetDate: Date = .now,
         locationID: UUID? = nil,
         desiredCount: Int? = nil,
         priorPlannedExerciseTitles: [String] = []
     ) -> [ExerciseLibraryItem] {
-        let candidates = candidateExercises(for: routineDay, locationID: locationID)
+        let candidates = candidateExercises(for: routineActivity, locationID: locationID)
         let selectionLimit = min(max(desiredCount ?? 4, 1), candidates.count)
         guard selectionLimit > 0 else { return [] }
 
         let focusTag = normalizedActivityTag(selectedFocusActivityType)
-        let relevantWorkouts = relevantCompletedWorkouts(for: routineDay, locationID: locationID)
+        let relevantWorkouts = relevantCompletedWorkouts(for: routineActivity, locationID: locationID)
         let priorPlannedTitleSet = Set(priorPlannedExerciseTitles.map(normalizedExerciseTitle))
         let recentWorkoutTitleSets = recentWorkoutTitleSets(from: relevantWorkouts, limit: 2)
         let recentTitleUsage = recentExerciseUsage(from: relevantWorkouts, limit: 6)
@@ -1220,7 +1716,7 @@ final class AppStore: ObservableObject {
                 let nextExercise = bestVarietyExercise(
                     from: remainingCandidates,
                     selectedExercises: selectedExercises,
-                    routineDay: routineDay,
+                    routineActivity: routineActivity,
                     recentWorkoutTitleSets: recentWorkoutTitleSets,
                     recentTitleUsage: recentTitleUsage,
                     priorPlannedTitleSet: priorPlannedTitleSet,
@@ -1241,21 +1737,21 @@ final class AppStore: ObservableObject {
         return Array(selectedExercises.prefix(selectionLimit))
     }
 
-    private func candidateExercises(for routineDay: RoutineDay, locationID: UUID? = nil) -> [ExerciseLibraryItem] {
+    private func candidateExercises(for routineActivity: RoutineActivity, locationID: UUID? = nil) -> [ExerciseLibraryItem] {
         exerciseLibrary
             .filter { exercise in
-                isRelevantCandidate(exercise, for: routineDay)
+                isRelevantCandidate(exercise, for: routineActivity)
             }
             .filter { exercise in
-                supports(exercise: exercise, at: locationID ?? routineDay.defaultLocationID)
+                supports(exercise: exercise, at: locationID ?? routineActivity.defaultLocationID)
             }
             .sorted { lhs, rhs in
                 lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
             }
     }
 
-    private func isRelevantCandidate(_ exercise: ExerciseLibraryItem, for routineDay: RoutineDay) -> Bool {
-        let focusAreas = Set(routineDay.focusAreas)
+    private func isRelevantCandidate(_ exercise: ExerciseLibraryItem, for routineActivity: RoutineActivity) -> Bool {
+        let focusAreas = Set(routineActivity.focusAreas)
         let primaryMuscles = Set(exercise.primaryMuscles)
         let matchingFocusCount = focusAreas.intersection(primaryMuscles).count
 
@@ -1269,8 +1765,8 @@ final class AppStore: ObservableObject {
         return primaryMuscles.isSubset(of: focusAreas) || matchingFocusCount >= 2
     }
 
-    private func relevantCompletedWorkouts(for routineDay: RoutineDay, locationID: UUID? = nil) -> [CompletedWorkoutSummary] {
-        let candidateTitleSet = Set(candidateExercises(for: routineDay, locationID: locationID).map { normalizedExerciseTitle($0.name) })
+    private func relevantCompletedWorkouts(for routineActivity: RoutineActivity, locationID: UUID? = nil) -> [CompletedWorkoutSummary] {
+        let candidateTitleSet = Set(candidateExercises(for: routineActivity, locationID: locationID).map { normalizedExerciseTitle($0.name) })
         guard !candidateTitleSet.isEmpty else { return [] }
 
         return history
@@ -1331,7 +1827,7 @@ final class AppStore: ObservableObject {
     private func bestVarietyExercise(
         from candidates: [ExerciseLibraryItem],
         selectedExercises: [ExerciseLibraryItem],
-        routineDay: RoutineDay,
+        routineActivity: RoutineActivity,
         recentWorkoutTitleSets: [Set<String>],
         recentTitleUsage: [String: Int],
         priorPlannedTitleSet: Set<String>,
@@ -1345,7 +1841,7 @@ final class AppStore: ObservableObject {
                 for: lhs,
                 selectedPatterns: selectedPatterns,
                 selectedFamilies: selectedFamilies,
-                routineDay: routineDay,
+                routineActivity: routineActivity,
                 recentWorkoutTitleSets: recentWorkoutTitleSets,
                 recentTitleUsage: recentTitleUsage,
                 priorPlannedTitleSet: priorPlannedTitleSet,
@@ -1355,7 +1851,7 @@ final class AppStore: ObservableObject {
                 for: rhs,
                 selectedPatterns: selectedPatterns,
                 selectedFamilies: selectedFamilies,
-                routineDay: routineDay,
+                routineActivity: routineActivity,
                 recentWorkoutTitleSets: recentWorkoutTitleSets,
                 recentTitleUsage: recentTitleUsage,
                 priorPlannedTitleSet: priorPlannedTitleSet,
@@ -1374,7 +1870,7 @@ final class AppStore: ObservableObject {
         for exercise: ExerciseLibraryItem,
         selectedPatterns: [ExerciseMovementPattern: Int],
         selectedFamilies: [String: Int],
-        routineDay: RoutineDay,
+        routineActivity: RoutineActivity,
         recentWorkoutTitleSets: [Set<String>],
         recentTitleUsage: [String: Int],
         priorPlannedTitleSet: Set<String>,
@@ -1384,7 +1880,7 @@ final class AppStore: ObservableObject {
         let recentUsageCount = recentTitleUsage[normalizedTitle] ?? 0
         let mostRecentTitles = recentWorkoutTitleSets.first ?? []
         let secondRecentTitles = recentWorkoutTitleSets.dropFirst().first ?? []
-        let matchingFocusCount = Set(exercise.primaryMuscles).intersection(Set(routineDay.focusAreas)).count
+        let matchingFocusCount = Set(exercise.primaryMuscles).intersection(Set(routineActivity.focusAreas)).count
         let selectedPatternCount = selectedPatterns[exercise.movementPattern] ?? 0
         let selectedFamilyCount = selectedFamilies[exerciseVarietyFamilyKey(for: exercise)] ?? 0
 
@@ -1398,7 +1894,33 @@ final class AppStore: ObservableObject {
         score += matchingFocusCount * 6
         score += focusSupportScore(for: exercise, focusTag: focusTag)
 
+        // Small boost when this exercise's body part is typically trained on today's weekday
+        if let todayBoost = bodyPartScheduleBoost(for: exercise, in: routineActivity) {
+            score += todayBoost
+        }
+
         return score
+    }
+
+    private func bodyPartScheduleBoost(
+        for exercise: ExerciseLibraryItem,
+        in routineActivity: RoutineActivity
+    ) -> Int? {
+        guard !routineActivity.bodyPartSchedules.isEmpty else { return nil }
+
+        let today = weekday(for: .now)
+        let scheduleByBodyPart: [ExerciseBodyArea: Set<Weekday>] = Dictionary(
+            uniqueKeysWithValues: routineActivity.bodyPartSchedules.map { pref in
+                (pref.bodyPart, Set(pref.weekdays))
+            }
+        )
+
+        let primaryMuscles = Set(exercise.primaryMuscles)
+        let matchesToday = primaryMuscles.contains { area in
+            scheduleByBodyPart[area]?.contains(today) == true
+        }
+
+        return matchesToday ? 6 : 0
     }
 
     private func recentWorkoutTitleSets(
@@ -1530,21 +2052,21 @@ final class AppStore: ObservableObject {
     }
 
     private func workoutPlan(
-        for routineDay: RoutineDay,
+        for routineActivity: RoutineActivity,
         targetDate: Date,
         locationID: UUID?,
         durationMinutes: Int? = nil
     ) -> WorkoutPlan {
-        let resolvedDuration = durationMinutes ?? routineDay.defaultDurationMinutes ?? currentWorkout.plannedDurationMinutes
+        let resolvedDuration = durationMinutes ?? routineActivity.defaultDurationMinutes ?? currentWorkout.plannedDurationMinutes
         return WorkoutPlan(
             id: UUID(),
             summary: "Planned strength session",
             plannedDurationMinutes: resolvedDuration,
-            locationID: locationID ?? routineDay.defaultLocationID,
+            locationID: locationID ?? routineActivity.defaultLocationID,
             exercises: plannedExercises(
-                for: routineDay,
+                for: routineActivity,
                 targetDate: targetDate,
-                locationID: locationID ?? routineDay.defaultLocationID,
+                locationID: locationID ?? routineActivity.defaultLocationID,
                 desiredCount: suggestedExerciseCount(for: resolvedDuration)
             )
         )
@@ -1553,6 +2075,91 @@ final class AppStore: ObservableObject {
     private func suggestedExerciseCount(for durationMinutes: Int) -> Int {
         let normalizedDuration = max(durationMinutes, 5)
         return max((normalizedDuration / 5) * 2, 2)
+    }
+
+    private func combinedTrackedWorkoutActivityType(for routineActivities: [RoutineActivity]) -> String {
+        let normalizedActivityTypes = Array(
+            Set(
+                routineActivities.map {
+                    $0.activityType.trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+                .filter { !$0.isEmpty }
+            )
+        )
+
+        if normalizedActivityTypes.count == 1, let onlyActivityType = normalizedActivityTypes.first {
+            return onlyActivityType
+        }
+
+        if normalizedActivityTypes.contains(where: {
+            $0.caseInsensitiveCompare("Traditional Strength Training") == .orderedSame
+        }) {
+            return "Traditional Strength Training"
+        }
+
+        return normalizedActivityTypes.first ?? "Traditional Strength Training"
+    }
+
+    private func plannedExerciseCounts(
+        for routineActivities: [RoutineActivity],
+        totalDesiredCount: Int,
+        routineWeights: [UUID: Int]
+    ) -> [UUID: Int] {
+        let recommendedWeights = recommendedRoutineWeights(for: routineActivities)
+        let mergedWeights = Dictionary(uniqueKeysWithValues: routineActivities.map { routineActivity in
+            let explicitWeight = routineWeights[routineActivity.id]
+            let resolvedWeight = explicitWeight ?? recommendedWeights[routineActivity.id] ?? 1
+            return (routineActivity.id, max(resolvedWeight, 0))
+        })
+
+        return allocatedUnits(
+            for: routineActivities,
+            totalUnits: max(totalDesiredCount, 1),
+            rawWeights: mergedWeights
+        )
+    }
+
+    private func allocatedUnits(
+        for routineActivities: [RoutineActivity],
+        totalUnits: Int,
+        rawWeights: [UUID: Int]
+    ) -> [UUID: Int] {
+        guard !routineActivities.isEmpty else { return [:] }
+
+        let positiveWeights = routineActivities.map { routineActivity in
+            (routineActivity.id, max(rawWeights[routineActivity.id] ?? 0, 0))
+        }
+        let totalWeight = positiveWeights.reduce(0) { $0 + $1.1 }
+        let fallbackWeight = totalWeight == 0 ? 1 : 0
+        let normalizedWeights = positiveWeights.map { id, weight in
+            (id, totalWeight == 0 ? fallbackWeight : weight)
+        }
+        let denominator = max(normalizedWeights.reduce(0) { $0 + $1.1 }, 1)
+
+        var baseAllocations: [UUID: Int] = [:]
+        var remainders: [(UUID, Double)] = []
+        var usedUnits = 0
+
+        for (id, weight) in normalizedWeights {
+            let exactAllocation = (Double(weight) / Double(denominator)) * Double(totalUnits)
+            let baseAllocation = Int(exactAllocation.rounded(.down))
+            baseAllocations[id] = baseAllocation
+            usedUnits += baseAllocation
+            remainders.append((id, exactAllocation - Double(baseAllocation)))
+        }
+
+        let remainingUnits = max(totalUnits - usedUnits, 0)
+        for (id, _) in remainders.sorted(by: { lhs, rhs in
+            if lhs.1 != rhs.1 {
+                return lhs.1 > rhs.1
+            }
+
+            return lhs.0.uuidString < rhs.0.uuidString
+        }).prefix(remainingUnits) {
+            baseAllocations[id, default: 0] += 1
+        }
+
+        return baseAllocations
     }
 
     private func makeCompletedExerciseDetail(from trackedExercise: TrackedExerciseState) -> CompletedExerciseDetail {
@@ -1608,7 +2215,7 @@ final class AppStore: ObservableObject {
         workouts.enumerated()
             .compactMap { index, workout -> (Int, TimeInterval)? in
                 guard
-                    workout.activityType.trimmingCharacters(in: .whitespacesAndNewlines).caseInsensitiveCompare("Traditional Strength Training") == .orderedSame,
+                    workout.activityType.trimmingCharacters(in: .whitespacesAndNewlines).caseInsensitiveCompare(pendingWorkout.activityType.trimmingCharacters(in: .whitespacesAndNewlines)) == .orderedSame,
                     Calendar.current.isDate(workout.date, inSameDayAs: pendingWorkout.startedAt)
                 else {
                     return nil

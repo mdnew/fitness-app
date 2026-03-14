@@ -95,6 +95,15 @@ struct WorkoutActivityCatalog {
 
     static let titles: [String] = all.map(\.title)
 
+    static func activityType(forTitle title: String) -> HKWorkoutActivityType? {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        return all.first(where: {
+            $0.title.caseInsensitiveCompare(trimmed) == .orderedSame
+        })?.healthKitType
+    }
+
     static func displayName(for activityType: HKWorkoutActivityType) -> String {
         all.first(where: { $0.healthKitType == activityType })?.title ?? "Other"
     }
@@ -197,6 +206,50 @@ final class HealthKitService {
         }
     }
 
+    func saveWorkout(
+        activityTypeName: String,
+        startDate: Date,
+        endDate: Date,
+        totalEnergyBurnedKilocalories: Double? = nil
+    ) async throws {
+        guard isHealthDataAvailable else {
+            throw HealthKitServiceError.unavailable
+        }
+
+        guard let activityType = WorkoutActivityCatalog.activityType(forTitle: activityTypeName) else {
+            return
+        }
+
+        let energyQuantity: HKQuantity?
+        if let totalEnergyBurnedKilocalories {
+            energyQuantity = HKQuantity(unit: .kilocalorie(), doubleValue: totalEnergyBurnedKilocalories)
+        } else {
+            energyQuantity = nil
+        }
+
+        let workout = HKWorkout(
+            activityType: activityType,
+            start: startDate,
+            end: endDate,
+            workoutEvents: nil,
+            totalEnergyBurned: energyQuantity,
+            totalDistance: nil,
+            metadata: nil
+        )
+
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            healthStore.save(workout) { success, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if success {
+                    continuation.resume()
+                } else {
+                    continuation.resume(throwing: HealthKitServiceError.authorizationFailed)
+                }
+            }
+        }
+    }
+
     private static func makeSummary(from workout: HKWorkout) -> CompletedWorkoutSummary {
         let activityType = displayName(for: workout.workoutActivityType)
         return CompletedWorkoutSummary(
@@ -288,6 +341,50 @@ final class HealthSyncController: ObservableObject {
             )
             store.setHealthSyncState(.refreshed(.now))
             store.persist()
+        } catch {
+            store.setHealthSyncState(.failed(error.localizedDescription))
+            store.persist()
+        }
+    }
+
+    func logWorkoutFromTrackSession(_ pendingWorkout: PendingTrackedWorkoutMerge, using store: AppStore) async {
+        await logWorkoutFromTrackedSession(
+            activityTypeName: pendingWorkout.activityType,
+            startedAt: pendingWorkout.startedAt,
+            completedAt: pendingWorkout.completedAt,
+            using: store
+        )
+    }
+
+    func logWorkoutFromTrackedSession(
+        _ session: TrackedWorkoutSession,
+        completedAt: Date = .now,
+        using store: AppStore
+    ) async {
+        await logWorkoutFromTrackedSession(
+            activityTypeName: session.activityType,
+            startedAt: session.startedAt,
+            completedAt: completedAt,
+            using: store
+        )
+    }
+
+    private func logWorkoutFromTrackedSession(
+        activityTypeName: String,
+        startedAt: Date,
+        completedAt: Date,
+        using store: AppStore
+    ) async {
+        guard healthKitService.isHealthDataAvailable else { return }
+
+        do {
+            try await healthKitService.saveWorkout(
+                activityTypeName: activityTypeName,
+                startDate: startedAt,
+                endDate: completedAt,
+                totalEnergyBurnedKilocalories: nil
+            )
+            await refresh(using: store)
         } catch {
             store.setHealthSyncState(.failed(error.localizedDescription))
             store.persist()
