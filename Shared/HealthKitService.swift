@@ -149,9 +149,16 @@ final class HealthKitService {
             throw HealthKitServiceError.unavailable
         }
 
-        let workoutType = HKObjectType.workoutType()
-        let readTypes: Set<HKObjectType> = [workoutType]
-        let writeTypes: Set<HKSampleType> = [workoutType]
+        let writeTypes: Set<HKSampleType> = [
+            HKObjectType.workoutType()
+        ]
+
+        let readTypes: Set<HKObjectType> = [
+            HKObjectType.workoutType(),
+            HKQuantityType(.heartRate),
+            HKQuantityType(.activeEnergyBurned),
+            HKObjectType.activitySummaryType()
+        ]
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             healthStore.requestAuthorization(toShare: writeTypes, read: readTypes) { success, error in
@@ -165,6 +172,24 @@ final class HealthKitService {
             }
         }
     }
+
+#if os(watchOS)
+    func startLiveWorkout(activityTypeName: String) throws -> (HKWorkoutSession, HKLiveWorkoutBuilder) {
+        guard let activityType = WorkoutActivityCatalog.activityType(forTitle: activityTypeName) else {
+            throw HealthKitServiceError.authorizationFailed
+        }
+
+        let config = HKWorkoutConfiguration()
+        config.activityType = activityType
+        config.locationType = .indoor
+
+        let session = try HKWorkoutSession(healthStore: healthStore, configuration: config)
+        let builder = session.associatedWorkoutBuilder()
+        builder.dataSource = HKLiveWorkoutDataSource(healthStore: healthStore, workoutConfiguration: config)
+
+        return (session, builder)
+    }
+#endif
 
     func refreshWorkoutHistory() async throws -> HealthRefreshPayload {
         guard isHealthDataAvailable else {
@@ -294,100 +319,3 @@ final class HealthKitService {
     }
 }
 
-@MainActor
-final class HealthSyncController: ObservableObject {
-    private let healthKitService = HealthKitService()
-
-    var isHealthDataAvailable: Bool {
-        healthKitService.isHealthDataAvailable
-    }
-
-    func authorizationStatus() -> HKAuthorizationStatus {
-        healthKitService.authorizationStatus()
-    }
-
-    func refreshOnLaunch(using store: AppStore) async {
-        guard healthKitService.isHealthDataAvailable else {
-            store.setHealthSyncState(.failed("Health unavailable"))
-            return
-        }
-
-        if healthKitService.authorizationStatus() == .notDetermined {
-            store.setHealthSyncState(.notConnected)
-            return
-        }
-
-        await refresh(using: store)
-    }
-
-    func connectAndRefresh(using store: AppStore) async {
-        do {
-            store.setHealthSyncState(.refreshing)
-            try await healthKitService.requestAuthorization()
-            await refresh(using: store)
-        } catch {
-            store.setHealthSyncState(.failed(error.localizedDescription))
-            store.persist()
-        }
-    }
-
-    func refresh(using store: AppStore) async {
-        do {
-            store.setHealthSyncState(.refreshing)
-            let payload = try await healthKitService.refreshWorkoutHistory()
-            store.applyHealthRefresh(
-                completedWorkouts: payload.completedWorkouts,
-                detectedActivityTypes: payload.detectedActivityTypes
-            )
-            store.setHealthSyncState(.refreshed(.now))
-            store.persist()
-        } catch {
-            store.setHealthSyncState(.failed(error.localizedDescription))
-            store.persist()
-        }
-    }
-
-    func logWorkoutFromTrackSession(_ pendingWorkout: PendingTrackedWorkoutMerge, using store: AppStore) async {
-        await logWorkoutFromTrackedSession(
-            activityTypeName: pendingWorkout.activityType,
-            startedAt: pendingWorkout.startedAt,
-            completedAt: pendingWorkout.completedAt,
-            using: store
-        )
-    }
-
-    func logWorkoutFromTrackedSession(
-        _ session: TrackedWorkoutSession,
-        completedAt: Date = .now,
-        using store: AppStore
-    ) async {
-        await logWorkoutFromTrackedSession(
-            activityTypeName: session.activityType,
-            startedAt: session.startedAt,
-            completedAt: completedAt,
-            using: store
-        )
-    }
-
-    private func logWorkoutFromTrackedSession(
-        activityTypeName: String,
-        startedAt: Date,
-        completedAt: Date,
-        using store: AppStore
-    ) async {
-        guard healthKitService.isHealthDataAvailable else { return }
-
-        do {
-            try await healthKitService.saveWorkout(
-                activityTypeName: activityTypeName,
-                startDate: startedAt,
-                endDate: completedAt,
-                totalEnergyBurnedKilocalories: nil
-            )
-            await refresh(using: store)
-        } catch {
-            store.setHealthSyncState(.failed(error.localizedDescription))
-            store.persist()
-        }
-    }
-}

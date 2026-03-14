@@ -178,8 +178,11 @@ extension WatchSyncController: WCSessionDelegate {
 
         Task { @MainActor in
             guard let store = self.store, let healthSyncController = self.healthSyncController else { return }
+            // The Watch already saved the workout to HealthKit via HKLiveWorkoutBuilder.finishWorkout().
+            // Add exercise details as a pending merge so they attach when the refresh pulls in
+            // the HealthKit workout that the Watch wrote.
             store.addPendingTrackedWorkout(pending)
-            await healthSyncController.logWorkoutFromTrackSession(pending, using: store)
+            await healthSyncController.refresh(using: store)
             store.persist()
             ProcessedWatchWorkoutIds.add(watchWorkoutId)
             self.sendAckToWatch(watchWorkoutId: watchWorkoutId)
