@@ -2669,24 +2669,22 @@ private struct SettingsScreen: View {
                     SectionTitle(title: "Apple Health")
                     AppCard {
                         VStack(alignment: .leading, spacing: 12) {
-                            HStack(alignment: .top) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Apple Health Workout Import")
-                                        .font(.headline)
-                                    Text("Connect Apple Health and refresh to pull workouts into Activity. Apple only shows the permission prompt the first time.")
-                                        .font(.footnote)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                StatusBadge(
-                                    title: store.healthSyncState.title,
-                                    tint: healthStateColor
-                                )
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Apple Health Workout Import")
+                                    .font(.headline)
+                                Text("Connect Apple Health and refresh to pull workouts into Activity. Apple only shows the permission prompt the first time.")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
                             }
 
                             Divider()
 
                             VStack(spacing: 10) {
+                                Text(store.healthSyncState.title)
+                                    .font(.footnote.weight(.medium))
+                                    .foregroundStyle(healthStateColor)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+
                                 if healthAuthorizationStatus == .notDetermined {
                                     WideActionButton(title: "Connect Apple Health", tint: .blue) {
                                         Task {
@@ -2694,7 +2692,7 @@ private struct SettingsScreen: View {
                                         }
                                     }
                                 } else {
-                                    WideActionButton(title: "Refresh Workouts", tint: .green) {
+                                    WideActionButton(title: "Refresh Data", tint: .green) {
                                         Task {
                                             await healthSyncController.refresh(using: store)
                                         }
@@ -2702,7 +2700,7 @@ private struct SettingsScreen: View {
                                 }
 
                                 if shouldShowHealthSettingsHelp {
-                                    Text("If permissions still look wrong, open Settings and verify Health access for this app, then return here to refresh workouts.")
+                                    Text("If permissions still look wrong, open Settings and verify Health access for this app, then return here to refresh.")
                                         .font(.footnote)
                                         .foregroundStyle(.secondary)
 
