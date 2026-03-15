@@ -6,6 +6,8 @@ import HealthKit
 final class LiveWorkoutManager: NSObject, ObservableObject {
     @Published var heartRate: Double = 0
     @Published var activeCalories: Double = 0
+    @Published var basalCalories: Double = 0
+    var totalCalories: Double { activeCalories + basalCalories }
     @Published var elapsedSeconds: Int = 0
     @Published var isRunning: Bool = false
 
@@ -55,6 +57,18 @@ final class LiveWorkoutManager: NSObject, ObservableObject {
 
         return (startDate ?? end, end)
     }
+
+    /// Ends the session without saving to HealthKit. Use when the user cancels or completes no exercises.
+    func endWithoutSaving() async throws {
+        timer?.invalidate()
+        timer = nil
+        isRunning = false
+
+        let end = Date()
+        session?.end()
+        try await builder?.endCollection(at: end)
+        // Do not call finishWorkout() — workout is not written to HealthKit
+    }
 }
 
 extension LiveWorkoutManager: HKLiveWorkoutBuilderDelegate {
@@ -73,6 +87,9 @@ extension LiveWorkoutManager: HKLiveWorkoutBuilderDelegate {
                         .doubleValue(for: .count().unitDivided(by: .minute())) ?? 0
                 case HKQuantityType(.activeEnergyBurned):
                     self.activeCalories = stats?.sumQuantity()?
+                        .doubleValue(for: .kilocalorie()) ?? 0
+                case HKQuantityType(.basalEnergyBurned):
+                    self.basalCalories = stats?.sumQuantity()?
                         .doubleValue(for: .kilocalorie()) ?? 0
                 default:
                     break

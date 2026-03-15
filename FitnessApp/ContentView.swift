@@ -1150,28 +1150,32 @@ private struct TrackScreen: View {
                         guard let session = store.trackedWorkoutSession else { return }
                         let completedAt = Date()
                         let completedCount = store.completedTrackedExerciseCount
-                        let pending = store.buildPendingTrackedWorkoutMerge(completedAt: completedAt)
-                        if let pending = pending {
-                            store.addPendingTrackedWorkout(pending)
+
+                        if completedCount > 0 {
+                            let pending = store.buildPendingTrackedWorkoutMerge(completedAt: completedAt)
+                            if let pending = pending {
+                                store.addPendingTrackedWorkout(pending)
+                            }
+                            finishMessage = "Completed \(completedCount) exercises. Your workout will appear after it syncs from Apple Health."
+                            Task {
+                                if let pending = pending {
+                                    await healthSyncController.logWorkoutFromTrackSession(pending, using: store)
+                                } else {
+                                    await healthSyncController.logWorkoutFromTrackedSession(
+                                        session,
+                                        completedAt: completedAt,
+                                        using: store
+                                    )
+                                }
+                            }
+                        } else {
+                            finishMessage = "No exercises completed. Session discarded."
                         }
 
-                        finishMessage = "Completed \(completedCount) exercises. Your workout will appear after it syncs from Apple Health."
                         store.discardTrackedWorkoutSession()
                         store.persist()
                         isShowingFinishSheet = false
                         isShowingFinishMessage = true
-
-                        Task {
-                            if let pending = pending {
-                                await healthSyncController.logWorkoutFromTrackSession(pending, using: store)
-                            } else {
-                                await healthSyncController.logWorkoutFromTrackedSession(
-                                    session,
-                                    completedAt: completedAt,
-                                    using: store
-                                )
-                            }
-                        }
                     },
                     onCancel: {
                         isShowingFinishSheet = false

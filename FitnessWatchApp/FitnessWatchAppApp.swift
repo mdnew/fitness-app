@@ -104,13 +104,17 @@ private struct WatchRootView: View {
                         return
                     }
                     Task {
-                        let (start, end) = (try? await liveWorkout.stop()) ?? (Date(), Date())
-                        workoutSender.sendWorkout(
-                            activityType: selectedActivityType,
-                            completedAt: end,
-                            durationSeconds: end.timeIntervalSince(start),
-                            exercises: completedExercises
-                        )
+                        if completedExercises.isEmpty {
+                            try? await liveWorkout.endWithoutSaving()
+                        } else {
+                            let (start, end) = (try? await liveWorkout.stop()) ?? (Date(), Date())
+                            workoutSender.sendWorkout(
+                                activityType: selectedActivityType,
+                                completedAt: end,
+                                durationSeconds: end.timeIntervalSince(start),
+                                exercises: completedExercises
+                            )
+                        }
                         resetToStart()
                     }
                 },
@@ -120,13 +124,7 @@ private struct WatchRootView: View {
                         return
                     }
                     Task {
-                        let (start, end) = (try? await liveWorkout.stop()) ?? (Date(), Date())
-                        workoutSender.sendWorkout(
-                            activityType: selectedActivityType,
-                            completedAt: end,
-                            durationSeconds: end.timeIntervalSince(start),
-                            exercises: completedExercises
-                        )
+                        try? await liveWorkout.endWithoutSaving()
                         resetToStart()
                     }
                 }
@@ -148,6 +146,7 @@ private struct WatchRootView: View {
                     exerciseTitle: exercise.name,
                     heartRate: liveWorkout.heartRate,
                     activeCalories: liveWorkout.activeCalories,
+                    totalCalories: liveWorkout.totalCalories,
                     onFinish: { elapsed in
                         completedExercises.append(WatchCompletedExercise(title: exercise.name, durationSeconds: elapsed))
                         totalExerciseDuration += elapsed
@@ -571,6 +570,7 @@ private struct ExerciseTimerView: View {
     let exerciseTitle: String
     let heartRate: Double
     let activeCalories: Double
+    let totalCalories: Double
     let onFinish: (TimeInterval) -> Void
     let onCancel: () -> Void
 
@@ -578,7 +578,7 @@ private struct ExerciseTimerView: View {
 
     var body: some View {
         let active = max(Int(activeCalories.rounded()), 0)
-        let total = active
+        let total = max(Int(totalCalories.rounded()), 0)
 
         return ScrollView {
             VStack(spacing: 10) {

@@ -149,14 +149,22 @@ final class HealthKitService {
             throw HealthKitServiceError.unavailable
         }
 
+        // Types we write: workouts (phone Track + Watch finishWorkout), and quantity samples
+        // the Watch’s HKLiveWorkoutBuilder writes when the workout is finished (active energy, heart rate).
+        // Include basal energy so the builder can write it if it is part of the session.
         let writeTypes: Set<HKSampleType> = [
-            HKObjectType.workoutType()
+            HKObjectType.workoutType(),
+            HKQuantityType(.activeEnergyBurned),
+            HKQuantityType(.heartRate),
+            HKQuantityType(.basalEnergyBurned)
         ]
 
+        // Types we read: workout history, live metrics during Watch workouts, activity summary.
         let readTypes: Set<HKObjectType> = [
             HKObjectType.workoutType(),
             HKQuantityType(.heartRate),
             HKQuantityType(.activeEnergyBurned),
+            HKQuantityType(.basalEnergyBurned),
             HKObjectType.activitySummaryType()
         ]
 
