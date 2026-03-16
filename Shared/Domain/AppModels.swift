@@ -762,6 +762,11 @@ final class AppStore: ObservableObject {
     @Published var trackedWorkoutSession: TrackedWorkoutSession?
     @Published var pendingTrackedWorkouts: [PendingTrackedWorkoutMerge]
     @Published var history: [CompletedWorkoutSummary]
+    /// Workouts older than 7 days; used when generating suggestion lists so recent workouts are not repeated.
+    var historyExcludingLast7Days: [CompletedWorkoutSummary] {
+        let cutoff = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+        return history.filter { $0.date < cutoff }
+    }
     @Published var healthSyncState: HealthSyncState = .notConnected
     @Published var futureActivitiesLastRegeneratedAt: Date?
 
@@ -1772,7 +1777,7 @@ final class AppStore: ObservableObject {
         let candidateTitleSet = Set(candidateExercises(for: routineActivity, locationID: locationID).map { normalizedExerciseTitle($0.name) })
         guard !candidateTitleSet.isEmpty else { return [] }
 
-        return history
+        return historyExcludingLast7Days
             .filter { !$0.exerciseDetails.isEmpty }
             .filter { workout in
                 workout.exerciseDetails.contains { exercise in

@@ -761,8 +761,12 @@ private struct ActivityScreen: View {
             }
     }
 
+    private var startOfSevenDaysAgo: Date {
+        calendar.startOfDay(for: calendar.date(byAdding: .day, value: -7, to: Date()) ?? Date())
+    }
+
     private var pastWorkouts: [CompletedWorkoutSummary] {
-        importedWorkouts.filter { calendar.startOfDay(for: $0.date) < startOfToday }
+        importedWorkouts.filter { calendar.startOfDay(for: $0.date) < startOfSevenDaysAgo }
     }
 
     private var todayWorkoutDayGroup: PastWorkoutDayGroup? {

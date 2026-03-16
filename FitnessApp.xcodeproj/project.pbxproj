@@ -10,6 +10,7 @@
 		076A1F8B4B5FAF40D11BDFD5 /* PersistenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74490C8820EBF9BC632C84FD /* PersistenceController.swift */; };
 		0E63E85D799634EE8336ABD2 /* HealthKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7726BB3ABD771FD44D661DF9 /* HealthKitService.swift */; };
 		0FA7473349B301DCC5AB354B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 33370CB6BFB9EFB3A4AAB4EF /* Assets.xcassets */; };
+		B1C8A2D3E4F5678901234ABC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 33370CB6BFB9EFB3A4AAB4EF /* Assets.xcassets */; };
 		5064C04B8C96D4E65AA7D859 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F49E7AA24285552E1C91AABC /* ContentView.swift */; };
 		6461E1FDC9EF5C2B4EA895DC /* AppStore+Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = A34F7CEE38559AAF67A7DFD5 /* AppStore+Persistence.swift */; };
 		7D22765354BBEDF928EF14E7 /* LiveWorkoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7C565CBABDACF58675FF104 /* LiveWorkoutManager.swift */; };
@@ -158,6 +159,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 98B0645059E6A635DC45C63E /* Build configuration list for PBXNativeTarget "FitnessWatchApp" */;
 			buildPhases = (
+				B2C3D4E5F6A7890123456780 /* Resources */,
 				2DE5D4AD6DE48DC497AFE718 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
@@ -246,6 +248,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				D68FCD8F3B6A23E4F509613A /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B2C3D4E5F6A7890123456780 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B1C8A2D3E4F5678901234ABC /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -442,7 +452,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				DEVELOPMENT_TEAM = MPZPWEMR37;
 				INFOPLIST_KEY_CFBundleDisplayName = "Training Day";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.mnew.FitnessApp.healthreset;
@@ -482,7 +492,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				DEVELOPMENT_TEAM = MPZPWEMR37;
 				INFOPLIST_KEY_CFBundleDisplayName = "Training Day";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.mnew.FitnessApp.healthreset;
