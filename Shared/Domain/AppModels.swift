@@ -350,6 +350,7 @@ enum ExerciseMovementPattern: String, CaseIterable, Codable, Identifiable {
     case singleLeg
     case carry
     case core
+    case stretch
 
     var id: String { rawValue }
 
@@ -364,6 +365,7 @@ enum ExerciseMovementPattern: String, CaseIterable, Codable, Identifiable {
         case .singleLeg: "Single Leg"
         case .carry: "Carry"
         case .core: "Core"
+        case .stretch: "Stretch"
         }
     }
 }
@@ -758,13 +760,40 @@ final class AppStore: ObservableObject {
     @Published var locations: [LocationItem]
     @Published var routineActivities: [RoutineActivity]
     @Published var exerciseLibrary: [ExerciseLibraryItem]
+    /// Stretch exercises for the Flexibility flow (movement pattern == .stretch).
+    var stretchExercises: [ExerciseLibraryItem] {
+        exerciseLibrary.filter { $0.movementPattern == .stretch }
+    }
+
+    /// Body areas that have stretches in the catalog (used for Flexibility target body parts).
+    static let flexibilityBodyAreas: [ExerciseBodyArea] = [.legs, .glutes, .back, .shoulders, .chest, .triceps, .abs]
+
+    /// Generated stretch list for a Flexibility session based on duration and optional focus areas.
+    func recommendedStretches(durationMinutes: Int, focusAreas: [ExerciseBodyArea] = []) -> [ExerciseLibraryItem] {
+        let count = suggestedStretchCount(for: durationMinutes)
+        var stretches = stretchExercises
+        if !focusAreas.isEmpty {
+            let areaSet = Set(focusAreas)
+            stretches = stretches.filter { exercise in
+                !Set(exercise.primaryMuscles).isDisjoint(with: areaSet)
+            }
+        }
+        guard !stretches.isEmpty, count > 0 else { return [] }
+        return Array(stretches.shuffled().prefix(count))
+    }
+
+    private func suggestedStretchCount(for durationMinutes: Int) -> Int {
+        let normalized = max(durationMinutes, 5)
+        return min(stretchExercises.count, max(4, (normalized / 5) * 2))
+    }
+
     @Published var currentWorkout: WorkoutPlan
     @Published var trackedWorkoutSession: TrackedWorkoutSession?
     @Published var pendingTrackedWorkouts: [PendingTrackedWorkoutMerge]
     @Published var history: [CompletedWorkoutSummary]
-    /// Workouts older than 7 days; used when generating suggestion lists so recent workouts are not repeated.
-    var historyExcludingLast7Days: [CompletedWorkoutSummary] {
-        let cutoff = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+    /// Workouts older than 3 days; used when generating suggestion lists so recent workouts are not repeated.
+    var historyExcludingLast3Days: [CompletedWorkoutSummary] {
+        let cutoff = Calendar.current.date(byAdding: .day, value: -3, to: Date()) ?? Date()
         return history.filter { $0.date < cutoff }
     }
     @Published var healthSyncState: HealthSyncState = .notConnected
@@ -898,6 +927,17 @@ final class AppStore: ObservableObject {
                 defaultDurationMinutes: nil,
                 bodyPartSchedules: coreSchedules,
                 isTrainingTemplate: true
+            ),
+            RoutineActivity(
+                id: UUID(),
+                title: "Flexibility",
+                activityType: "Flexibility",
+                focusAreas: flexibilityBodyAreas,
+                scheduledWeekdays: [],
+                defaultLocationID: nil,
+                defaultDurationMinutes: 15,
+                bodyPartSchedules: [],
+                isTrainingTemplate: true
             )
         ]
 
@@ -992,6 +1032,7 @@ final class AppStore: ObservableObject {
             exercise("Dead Bug", .core, [.bodyweight], [.abs], ["running", "general"], .beginner, false, "Foundational trunk-control pattern.", "Keep your low back pressed down, extend opposite arm and leg, then return and switch sides."),
             exercise("Side Plank", .core, [.bodyweight], [.abs, .glutes], ["running", "surfing", "general"], .beginner, false, "Simple anti-lateral-flexion core work.", "Prop yourself on one forearm, lift your hips into a straight line, and hold steady."),
             exercise("Cable Crunch", .core, [.cable], [.abs], ["general"], .beginner, false, "Simple cable-based abdominal exercise.", "Kneel at the cable, curl your ribs toward your hips, then return without losing control."),
+            exercise("Machine Crunch", .core, [.machine], [.abs], ["general"], .beginner, false, "Abdominal crunch on a crunch machine for controlled resistance.", "Sit in the machine with the pad against your chest. Curl your torso forward, bringing your ribs toward your hips, then return with control."),
             exercise("Medicine Ball Situp to Twist", .core, [.medicineBall], [.abs], ["general"], .beginner, false, "Sit-up with rotation, holding a medicine ball.", "Lie on your back with the ball at your chest. Sit up and twist to one side, lower with control, then repeat to the other side."),
             exercise("Medicine Ball Russian Twist", .core, [.medicineBall], [.abs], ["general"], .beginner, false, "Seated rotation with a medicine ball for obliques and core.", "Sit with knees bent, feet on the floor or lifted. Hold the ball and rotate your torso side to side, tapping the ball beside your hip each rep."),
             exercise("Sit-up", .core, [.bodyweight], [.abs], ["running", "general"], .beginner, false, "Classic full sit-up from supine to seated.", "Lie on your back, knees bent. Curl up through your abs until you reach a seated position, then lower with control."),
@@ -1005,7 +1046,28 @@ final class AppStore: ObservableObject {
             exercise("Glute Bridge", .hinge, [.bodyweight], [.glutes, .legs], ["running", "general"], .beginner, false, "Hip extension bridge for glute activation.", "Lie on your back, knees bent, feet flat. Drive through your heels to lift your hips until your body forms a straight line; squeeze your glutes at the top."),
             exercise("Cable Kickback", .hinge, [.cable], [.glutes], ["general"], .beginner, true, "Single-leg hip extension at the cable for glute isolation.", "Attach an ankle strap to the cable. Stand facing the machine, extend one leg back against the resistance, then return with control."),
             exercise("Frog Pump", .hinge, [.bodyweight], [.glutes], ["general"], .beginner, false, "Glute bridge with feet together and knees out for glute focus.", "Lie on your back with soles of your feet together and knees out. Drive through your heels to lift your hips, squeeze your glutes, then lower."),
-            exercise("Clam Shell", .core, [.bodyweight], [.glutes], ["running", "general"], .beginner, true, "Side-lying hip external rotation for glute medius.", "Lie on your side, knees bent. Keeping your feet together, lift your top knee toward the ceiling, then lower with control. Repeat on both sides.")
+            exercise("Clam Shell", .core, [.bodyweight], [.glutes], ["running", "general"], .beginner, true, "Side-lying hip external rotation for glute medius.", "Lie on your side, knees bent. Keeping your feet together, lift your top knee toward the ceiling, then lower with control. Repeat on both sides."),
+            // Flexibility / Stretches
+            exercise("Standing Hamstring Stretch", .stretch, [.bodyweight], [.legs], ["flexibility", "recovery"], .beginner, true, "Classic hamstring stretch standing.", "Stand with one foot slightly in front. Hinge at the hips and lean forward, keeping the front leg straight. Hold 20–30 seconds per side."),
+            exercise("Seated Hamstring Stretch", .stretch, [.bodyweight], [.legs], ["flexibility", "recovery"], .beginner, true, "Hamstring stretch seated on the floor.", "Sit with one leg extended, the other bent with foot to inner thigh. Fold forward over the straight leg. Hold 20–30 seconds per side."),
+            exercise("Hip Flexor Stretch", .stretch, [.bodyweight], [.legs, .glutes], ["flexibility", "recovery"], .beginner, true, "Kneeling hip flexor stretch.", "Kneel on one knee, other foot in front. Tuck your tailbone and lean slightly forward until you feel a stretch in the front of the back hip. Hold 20–30 seconds per side."),
+            exercise("Quad Stretch", .stretch, [.bodyweight], [.legs], ["flexibility", "recovery"], .beginner, true, "Standing quad stretch.", "Stand and pull one heel toward your glutes, keeping knees close. Hold 20–30 seconds per side."),
+            exercise("Calf Stretch", .stretch, [.bodyweight], [.legs], ["flexibility", "recovery"], .beginner, true, "Wall or step calf stretch.", "Place hands on a wall, one foot back. Keep the back leg straight and heel down. Hold 20–30 seconds per side. For a deeper stretch, bend the back knee slightly."),
+            exercise("Pigeon Pose", .stretch, [.bodyweight], [.glutes, .legs], ["flexibility", "recovery"], .beginner, true, "Hip opener stretch.", "From hands and knees, bring one knee forward and angle the shin. Extend the other leg back. Sit upright or fold forward. Hold 30–60 seconds per side."),
+            exercise("Figure-Four Stretch", .stretch, [.bodyweight], [.glutes, .legs], ["flexibility", "recovery"], .beginner, true, "Seated or supine glute stretch.", "Sit or lie on your back. Cross one ankle over the opposite knee. Gently pull the supporting leg toward you. Hold 20–30 seconds per side."),
+            exercise("Child's Pose", .stretch, [.bodyweight], [.back, .shoulders], ["flexibility", "recovery"], .beginner, false, "Resting stretch for back and hips.", "Kneel and sit your hips back toward your heels, arms extended forward. Rest your forehead on the floor. Hold 30–60 seconds."),
+            exercise("Cat-Cow", .stretch, [.bodyweight], [.back, .abs], ["flexibility", "recovery"], .beginner, false, "Spinal mobility stretch.", "On hands and knees, alternate between arching your back (cow) and rounding it (cat). Move slowly with your breath for 8–10 rounds."),
+            exercise("Thread the Needle", .stretch, [.bodyweight], [.back, .shoulders], ["flexibility", "recovery"], .beginner, true, "Upper-back and shoulder stretch.", "On hands and knees, slide one arm under your body and rotate your torso. Hold, then repeat on the other side. 20–30 seconds per side."),
+            exercise("Doorway Chest Stretch", .stretch, [.bodyweight], [.chest, .shoulders], ["flexibility", "recovery"], .beginner, false, "Chest and front-shoulder stretch.", "Stand in a doorway, arm at 90°. Step through and gently lean forward. Hold 20–30 seconds per side."),
+            exercise("Cross-Body Shoulder Stretch", .stretch, [.bodyweight], [.shoulders], ["flexibility", "recovery"], .beginner, true, "Shoulder and upper-arm stretch.", "Pull one arm across your chest with the other hand. Hold 20–30 seconds per side."),
+            exercise("Triceps Stretch", .stretch, [.bodyweight], [.triceps], ["flexibility", "recovery"], .beginner, true, "Triceps stretch behind the head.", "Reach one arm overhead, bend the elbow, and gently pull the elbow with the other hand. Hold 20–30 seconds per side."),
+            exercise("Neck Side Stretch", .stretch, [.bodyweight], [.shoulders], ["flexibility", "recovery"], .beginner, true, "Gentle neck stretch.", "Tilt your head to one side, ear toward shoulder. Optionally use your hand for light pressure. Hold 15–20 seconds per side."),
+            exercise("Seated Spinal Twist", .stretch, [.bodyweight], [.back, .abs], ["flexibility", "recovery"], .beginner, true, "Rotational spine stretch.", "Sit with one leg extended, other foot outside the knee. Twist your torso toward the bent knee. Hold 20–30 seconds per side."),
+            exercise("Knees to Chest", .stretch, [.bodyweight], [.back, .glutes], ["flexibility", "recovery"], .beginner, false, "Lower-back and hip release.", "Lie on your back and pull both knees toward your chest. Hold 20–30 seconds."),
+            exercise("World's Greatest Stretch", .stretch, [.bodyweight], [.legs, .back, .glutes], ["flexibility", "recovery"], .beginner, true, "Full-body mobility stretch.", "From a lunge, drop the back knee. Place same-side elbow inside the front foot, then rotate torso and reach arm up. Hold 20–30 seconds per side."),
+            exercise("Butterfly Stretch", .stretch, [.bodyweight], [.legs, .glutes], ["flexibility", "recovery"], .beginner, false, "Inner thigh and hip stretch.", "Sit with soles of feet together, knees out. Gently press knees down or fold forward. Hold 30–60 seconds."),
+            exercise("Lizard Lunge", .stretch, [.bodyweight], [.legs, .glutes], ["flexibility", "recovery"], .beginner, true, "Hip flexor and groin stretch.", "From a low lunge, lower back knee and optionally lower forearms inside the front foot. Hold 20–30 seconds per side."),
+            exercise("90/90 Hip Stretch", .stretch, [.bodyweight], [.legs, .glutes], ["flexibility", "recovery"], .beginner, true, "Hip rotation stretch.", "Sit with one leg at 90° in front, other at 90° to the side. Keep both knees bent. Fold forward or stay upright. Hold 20–30 seconds per side.")
         ]
     }
 
@@ -1355,6 +1417,46 @@ final class AppStore: ObservableObject {
             locationID: locationID,
             durationMinutes: durationMinutes
         )
+    }
+
+    /// Start a Flexibility session with a fixed list of stretches (no body-part suggestions).
+    @discardableResult
+    func startTrackedWorkout(
+        activityType: String,
+        stretches: [ExerciseLibraryItem],
+        targetDate: Date = .now,
+        locationID: UUID?,
+        durationMinutes: Int? = nil
+    ) -> TrackedWorkoutSession {
+        let locationName = locations.first(where: { $0.id == locationID })?.name ?? "No location"
+        let duration = durationMinutes ?? 15
+        let plannedExercises = stretches.map { stretch in
+            PlannedExercise(id: stretch.id, title: stretch.name, reason: "Stretch")
+        }
+        let workoutPlan = WorkoutPlan(
+            id: UUID(),
+            summary: activityType,
+            plannedDurationMinutes: duration,
+            locationID: locationID,
+            exercises: plannedExercises
+        )
+        let session = TrackedWorkoutSession(
+            id: UUID(),
+            startedAt: targetDate,
+            routineActivityID: nil,
+            title: activityType,
+            activityType: activityType,
+            summary: "Flexibility at \(locationName).",
+            plannedDurationMinutes: duration,
+            locationID: locationID,
+            locationName: locationName,
+            exercises: plannedExercises.map {
+                TrackedExerciseState(id: UUID(), plannedExercise: $0, isCompleted: false)
+            }
+        )
+        currentWorkout = workoutPlan
+        trackedWorkoutSession = session
+        return session
     }
 
     func toggleTrackedExercise(id: UUID) {
@@ -1777,7 +1879,7 @@ final class AppStore: ObservableObject {
         let candidateTitleSet = Set(candidateExercises(for: routineActivity, locationID: locationID).map { normalizedExerciseTitle($0.name) })
         guard !candidateTitleSet.isEmpty else { return [] }
 
-        return historyExcludingLast7Days
+        return historyExcludingLast3Days
             .filter { !$0.exerciseDetails.isEmpty }
             .filter { workout in
                 workout.exerciseDetails.contains { exercise in

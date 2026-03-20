@@ -209,6 +209,7 @@ private struct RoutineScreen: View {
                 VStack(spacing: 10) {
                     trainingActivityCard(activityType: "Traditional Strength Training")
                     trainingActivityCard(activityType: "Core Training")
+                    trainingActivityCard(activityType: "Flexibility")
                 }
 
                 HStack {
@@ -455,7 +456,8 @@ private struct RoutineScreen: View {
                         guard !trimmed.isEmpty else { return false }
                         let lowercased = trimmed.lowercased()
                         return lowercased != "traditional strength training" &&
-                            lowercased != "core training"
+                            lowercased != "core training" &&
+                            lowercased != "flexibility"
                     }
             )
         )
@@ -470,6 +472,9 @@ private struct RoutineScreen: View {
 
     private func allowedTrainingBodyAreas(for activityType: String) -> [ExerciseBodyArea] {
         let normalized = activityType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if normalized == "flexibility" {
+            return AppStore.flexibilityBodyAreas
+        }
         if normalized == "core training" {
             return [.glutes, .abs]
         }
@@ -533,15 +538,19 @@ private struct ActivityScreen: View {
                             } else {
                                 VStack(spacing: 10) {
                                     ForEach(allTodayActivityEntries) { entry in
-                                        if entry.kind == .completed {
+                                        if entry.kind == .completed, isStrengthOrCoreActivityTitle(entry.title) {
                                             NavigationLink {
                                                 ActivityEntryDetailScreen(entry: entry)
                                             } label: {
                                                 AppCard {
-                                                    SessionStyleActivityCard(entry: entry, dateLabel: sessionDateLabel(for: entry.date), showChevron: isStrengthOrCoreActivityTitle(entry.title))
+                                                    SessionStyleActivityCard(entry: entry, dateLabel: sessionDateLabel(for: entry.date), showChevron: true)
                                                 }
                                             }
                                             .buttonStyle(.plain)
+                                        } else if entry.kind == .completed {
+                                            AppCard {
+                                                SessionStyleActivityCard(entry: entry, dateLabel: sessionDateLabel(for: entry.date), showChevron: false)
+                                            }
                                         } else {
                                             AppCard {
                                                 SessionStyleActivityCard(entry: entry, dateLabel: sessionDateLabel(for: entry.date))
@@ -559,14 +568,20 @@ private struct ActivityScreen: View {
                             } else {
                                 VStack(spacing: 10) {
                                     ForEach(allPastActivityEntries) { entry in
-                                        NavigationLink {
-                                            ActivityEntryDetailScreen(entry: entry)
-                                        } label: {
+                                        if isStrengthOrCoreActivityTitle(entry.title) {
+                                            NavigationLink {
+                                                ActivityEntryDetailScreen(entry: entry)
+                                            } label: {
+                                                AppCard {
+                                                    SessionStyleActivityCard(entry: entry, dateLabel: sessionDateLabel(for: entry.date), showChevron: true)
+                                                }
+                                            }
+                                            .buttonStyle(.plain)
+                                        } else {
                                             AppCard {
-                                                SessionStyleActivityCard(entry: entry, dateLabel: sessionDateLabel(for: entry.date), showChevron: isStrengthOrCoreActivityTitle(entry.title))
+                                                SessionStyleActivityCard(entry: entry, dateLabel: sessionDateLabel(for: entry.date), showChevron: false)
                                             }
                                         }
-                                        .buttonStyle(.plain)
                                     }
                                 }
                             }
@@ -761,12 +776,10 @@ private struct ActivityScreen: View {
             }
     }
 
-    private var startOfSevenDaysAgo: Date {
-        calendar.startOfDay(for: calendar.date(byAdding: .day, value: -7, to: Date()) ?? Date())
-    }
-
+    /// Past = all workouts before today (so yesterday and earlier show in Activity).
+    /// The 7-day exclusion only affects suggestion logic in AppStore, not this list.
     private var pastWorkouts: [CompletedWorkoutSummary] {
-        importedWorkouts.filter { calendar.startOfDay(for: $0.date) < startOfSevenDaysAgo }
+        importedWorkouts.filter { calendar.startOfDay(for: $0.date) < startOfToday }
     }
 
     private var todayWorkoutDayGroup: PastWorkoutDayGroup? {
@@ -843,14 +856,15 @@ private struct ActivityScreen: View {
     }
 
     /// True for Traditional Strength Training or Core Training (grouped together in Today/Past, tappable for exercises).
+    /// True for Traditional Strength Training, Core Training, or Flexibility (grouped in Today/Past, tappable for detail).
     private func isStrengthOrCoreWorkout(_ workout: CompletedWorkoutSummary) -> Bool {
         let t = workout.activityType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return t == "traditional strength training" || t == "core training"
+        return t == "traditional strength training" || t == "core training" || t == "flexibility"
     }
 
     private func isStrengthOrCoreActivityTitle(_ title: String) -> Bool {
         let t = title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return t == "traditional strength training" || t == "core training"
+        return t == "traditional strength training" || t == "core training" || t == "flexibility"
     }
 
     private func isTraditionalStrengthActivityType(_ activityType: String) -> Bool {
@@ -1118,6 +1132,24 @@ private struct TrackScreen: View {
                                 .frame(height: 56)
                         }
                         .buttonStyle(.plain)
+
+                        Button {
+                            prepareSetup(for: "Flexibility")
+                        } label: {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color.blue)
+                                .overlay(
+                                    HStack {
+                                        Image(systemName: "figure.flexibility")
+                                            .font(.title2)
+                                        Text("Flexibility")
+                                            .font(.body.weight(.semibold))
+                                    }
+                                    .foregroundStyle(.white)
+                                )
+                                .frame(height: 56)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
 
@@ -1188,7 +1220,9 @@ private struct TrackScreen: View {
             }
             .sheet(isPresented: $isShowingOtherExerciseSheet) {
                 TrackOtherExercisePicker(
-                    exercises: store.exerciseLibrary,
+                    exercises: (trackedSession?.activityType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "flexibility")
+                        ? store.stretchExercises
+                        : store.exerciseLibrary,
                     onSelect: { exercise in
                         store.addTrackedExercise(exercise)
                         store.persist()
@@ -1243,16 +1277,28 @@ private struct TrackScreen: View {
                                 isShowingSetupSheet = false
                             },
                             onStart: {
-                                let focusAreas = Array(setupSelectedBodyParts)
-                                guard !focusAreas.isEmpty else { return }
-
-                                _ = store.startTrackedWorkout(
-                                    activityType: activityType,
-                                    focusAreas: focusAreas,
-                                    targetDate: .now,
-                                    locationID: selectedLocationID,
-                                    durationMinutes: selectedDurationMinutes
-                                )
+                                let normalized = activityType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                                if normalized == "flexibility" {
+                                    let stretches = store.recommendedStretches(durationMinutes: selectedDurationMinutes, focusAreas: Array(setupSelectedBodyParts))
+                                    guard !stretches.isEmpty else { return }
+                                    _ = store.startTrackedWorkout(
+                                        activityType: "Flexibility",
+                                        stretches: stretches,
+                                        targetDate: .now,
+                                        locationID: selectedLocationID,
+                                        durationMinutes: selectedDurationMinutes
+                                    )
+                                } else {
+                                    let focusAreas = Array(setupSelectedBodyParts)
+                                    guard !focusAreas.isEmpty else { return }
+                                    _ = store.startTrackedWorkout(
+                                        activityType: activityType,
+                                        focusAreas: focusAreas,
+                                        targetDate: .now,
+                                        locationID: selectedLocationID,
+                                        durationMinutes: selectedDurationMinutes
+                                    )
+                                }
                                 store.persist()
                                 isShowingSetupSheet = false
                             }
@@ -1271,20 +1317,25 @@ private struct TrackScreen: View {
 
     private func prepareSetup(for activityType: String) {
         setupActivityType = activityType
-
+        let normalized = activityType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let allowedAreas = allowedTrainingBodyAreas(for: activityType)
-        let today = store.weekday(for: .now)
-        if let template = trainingTemplate(for: activityType) {
-            let scheduledAreas = template.bodyPartSchedules
-                .filter { $0.weekdays.contains(today) }
-                .map(\.bodyPart)
-            if !scheduledAreas.isEmpty {
-                setupSelectedBodyParts = Set(scheduledAreas.filter { allowedAreas.contains($0) })
+
+        if normalized != "flexibility" {
+            let today = store.weekday(for: .now)
+            if let template = trainingTemplate(for: activityType) {
+                let scheduledAreas = template.bodyPartSchedules
+                    .filter { $0.weekdays.contains(today) }
+                    .map(\.bodyPart)
+                if !scheduledAreas.isEmpty {
+                    setupSelectedBodyParts = Set(scheduledAreas.filter { allowedAreas.contains($0) })
+                } else {
+                    setupSelectedBodyParts = Set(allowedAreas)
+                }
             } else {
                 setupSelectedBodyParts = Set(allowedAreas)
             }
         } else {
-            setupSelectedBodyParts = Set(allowedAreas)
+            setupSelectedBodyParts = Set(AppStore.flexibilityBodyAreas)
         }
 
         selectedLocationID = selectedLocationID ?? store.defaultLocation?.id ?? store.locations.first?.id
@@ -1302,6 +1353,9 @@ private struct TrackScreen: View {
 
     private func allowedTrainingBodyAreas(for activityType: String) -> [ExerciseBodyArea] {
         let normalized = activityType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if normalized == "flexibility" {
+            return AppStore.flexibilityBodyAreas
+        }
         if normalized == "core training" {
             return [.glutes, .abs]
         }
@@ -1344,16 +1398,19 @@ private struct TrackSetupSheet: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(activityType)
                                 .font(.headline)
-                            Text("Choose which body parts to emphasize for this session, then pick where and how long you want to train.")
+                            Text(allowedBodyParts.isEmpty
+                                ? "Pick where and how long you want to train. Stretches will be suggested for you."
+                                : "Choose which body parts to emphasize for this session, then pick where and how long you want to train.")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
                         }
                     }
 
-                    SectionTitle(title: "Target Body Parts")
-                    AppCard {
-                        VStack(alignment: .leading, spacing: 8) {
-                            ForEach(allowedBodyParts) { area in
+                    if !allowedBodyParts.isEmpty {
+                        SectionTitle(title: "Target Body Parts")
+                        AppCard {
+                            VStack(alignment: .leading, spacing: 8) {
+                                ForEach(allowedBodyParts) { area in
                                 Toggle(
                                     area.title,
                                     isOn: Binding(
@@ -1369,6 +1426,7 @@ private struct TrackSetupSheet: View {
                                 )
                             }
                         }
+                    }
                     }
 
                     SectionTitle(title: "Location & Duration")

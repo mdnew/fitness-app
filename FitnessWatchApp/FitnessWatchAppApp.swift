@@ -54,6 +54,9 @@ private struct WatchRootView: View {
                     },
                     onSelectCore: {
                         beginConfiguration(for: "Core Training")
+                    },
+                    onSelectFlexibility: {
+                        beginConfiguration(for: "Flexibility")
                     }
                 )
                 .frame(maxHeight: .infinity)
@@ -131,7 +134,7 @@ private struct WatchRootView: View {
             )
             .sheet(isPresented: $isShowingOtherExercisePicker) {
                 WatchOtherExercisePicker(
-                    exercises: otherExercisesForBodyParts,
+                    exercises: otherExercisesForCurrentActivity,
                     onSelect: { exercise in
                         suggestedExercises.append(exercise)
                         isShowingOtherExercisePicker = false
@@ -164,6 +167,9 @@ private struct WatchRootView: View {
                     },
                     onSelectCore: {
                         beginConfiguration(for: "Core Training")
+                    },
+                    onSelectFlexibility: {
+                        beginConfiguration(for: "Flexibility")
                     }
                 )
             }
@@ -185,6 +191,12 @@ private struct WatchRootView: View {
     }
 
     private func loadSuggestedExercises() {
+        let normalized = selectedActivityType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if normalized == "flexibility" {
+            suggestedExercises = store.recommendedStretches(durationMinutes: selectedDurationMinutes, focusAreas: Array(selectedBodyParts))
+            return
+        }
+
         let areas = Array(selectedBodyParts)
         guard !areas.isEmpty else {
             suggestedExercises = []
@@ -245,12 +257,24 @@ private struct WatchRootView: View {
 
     private func allowedTrainingBodyAreas(for activityType: String) -> [ExerciseBodyArea] {
         let normalized = activityType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if normalized == "flexibility" {
+            return AppStore.flexibilityBodyAreas
+        }
         if normalized == "core training" {
             return [.glutes, .abs]
         }
         return ExerciseBodyArea.allCases.filter { area in
             area != .glutes && area != .abs
         }
+    }
+
+    private var otherExercisesForCurrentActivity: [ExerciseLibraryItem] {
+        let normalized = selectedActivityType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if normalized == "flexibility" {
+            let inList = Set(suggestedExercises.map(\.id))
+            return store.stretchExercises.filter { !inList.contains($0.id) }
+        }
+        return otherExercisesForBodyParts
     }
 
     private var otherExercisesForBodyParts: [ExerciseLibraryItem] {
@@ -268,58 +292,88 @@ private struct WatchRootView: View {
 private struct ChooseActivityView: View {
     let onSelectStrength: () -> Void
     let onSelectCore: () -> Void
+    let onSelectFlexibility: () -> Void
 
     var body: some View {
-        VStack(spacing: 12) {
-            Text("Training Day")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.orange)
+        ScrollView(.vertical, showsIndicators: true) {
+            VStack(spacing: 12) {
+                Text("Training Day")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.orange)
+                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.center)
 
-            Text("Choose an Activity")
-                .font(.headline)
+                Text("Choose an Activity")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.center)
 
-            Divider()
-                .frame(maxWidth: .infinity)
+                Divider()
+                    .frame(maxWidth: .infinity)
 
-            VStack(spacing: 8) {
-                Button(action: onSelectStrength) {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color.blue)
-                        .overlay(
-                            HStack {
-                                Image(systemName: "figure.strengthtraining.traditional")
-                                    .font(.body)
-                                Text("Strength Training")
-                                    .font(.callout.weight(.semibold))
-                            }
-                            .foregroundStyle(.white)
-                            .padding(.vertical, 14)
-                            .padding(.horizontal, 6)
-                        )
-                        .frame(height: 56)
+                VStack(spacing: 8) {
+                    Button(action: onSelectStrength) {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color.blue)
+                            .overlay(
+                                HStack {
+                                    Image(systemName: "figure.strengthtraining.traditional")
+                                        .font(.body)
+                                    Text("Strength Training")
+                                        .font(.callout.weight(.semibold))
+                                }
+                                .foregroundStyle(.white)
+                                .padding(.vertical, 14)
+                                .padding(.horizontal, 6)
+                            )
+                            .frame(height: 56)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button(action: onSelectCore) {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color.blue)
+                            .overlay(
+                                HStack {
+                                    Image(systemName: "figure.core.training")
+                                        .font(.body)
+                                    Text("Core Training")
+                                        .font(.callout.weight(.semibold))
+                                }
+                                .foregroundStyle(.white)
+                                .padding(.vertical, 14)
+                                .padding(.horizontal, 6)
+                            )
+                            .frame(height: 56)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button(action: onSelectFlexibility) {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color.blue)
+                            .overlay(
+                                HStack {
+                                    Image(systemName: "figure.flexibility")
+                                        .font(.body)
+                                    Text("Flexibility")
+                                        .font(.callout.weight(.semibold))
+                                }
+                                .foregroundStyle(.white)
+                                .padding(.vertical, 14)
+                                .padding(.horizontal, 6)
+                            )
+                            .frame(height: 56)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
 
-                Button(action: onSelectCore) {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color.blue)
-                        .overlay(
-                            HStack {
-                                Image(systemName: "figure.core.training")
-                                    .font(.body)
-                                Text("Core Training")
-                                    .font(.callout.weight(.semibold))
-                            }
-                            .foregroundStyle(.white)
-                            .padding(.vertical, 14)
-                            .padding(.horizontal, 6)
-                        )
-                        .frame(height: 56)
-                }
-                .buttonStyle(.plain)
+                Color.clear
+                    .frame(height: 8)
             }
+            .padding(.horizontal)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
         }
-        .padding()
     }
 }
 
@@ -335,8 +389,9 @@ private struct TargetBodyPartsView: View {
 
     var body: some View {
         List {
-            Section("Target Body Parts") {
-                ForEach(allowedBodyParts) { area in
+            if !allowedBodyParts.isEmpty {
+                Section("Target Body Parts") {
+                    ForEach(allowedBodyParts) { area in
                     Toggle(
                         area.title,
                         isOn: Binding(
@@ -352,18 +407,29 @@ private struct TargetBodyPartsView: View {
                     )
                 }
             }
+            }
 
-            if !locations.isEmpty {
-                Section {
-                    Picker("Location", selection: $selectedLocationID) {
-                        ForEach(locations) { location in
-                            Text(location.name).tag(Optional(location.id))
+            if !locations.isEmpty || allowedBodyParts.isEmpty {
+                if !locations.isEmpty {
+                    Section {
+                        Picker("Location", selection: $selectedLocationID) {
+                            ForEach(locations) { location in
+                                Text(location.name).tag(Optional(location.id))
+                            }
+                        }
+
+                        Picker("Duration", selection: $selectedDurationMinutes) {
+                            ForEach([10, 15, 20, 30, 45], id: \.self) { minutes in
+                                Text("\(minutes) min").tag(minutes)
+                            }
                         }
                     }
-
-                    Picker("Duration", selection: $selectedDurationMinutes) {
-                        ForEach([10, 15, 20, 30, 45], id: \.self) { minutes in
-                            Text("\(minutes) min").tag(minutes)
+                } else {
+                    Section("Duration") {
+                        Picker("Duration", selection: $selectedDurationMinutes) {
+                            ForEach([10, 15, 20, 30, 45], id: \.self) { minutes in
+                                Text("\(minutes) min").tag(minutes)
+                            }
                         }
                     }
                 }
