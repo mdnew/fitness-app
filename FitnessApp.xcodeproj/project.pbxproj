@@ -16,6 +16,10 @@
 		7D22765354BBEDF928EF14E7 /* LiveWorkoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7C565CBABDACF58675FF104 /* LiveWorkoutManager.swift */; };
 		7FE10FB4A7748D317AD93970 /* HealthKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7726BB3ABD771FD44D661DF9 /* HealthKitService.swift */; };
 		A528819584C0AC5F4FD5DD05 /* AppModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CE77883D44517291BC6B7CC /* AppModels.swift */; };
+		B7E8C9012F3A4D5E6B8C9D0E /* ExerciseDbCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7E8C9002F3A4D5E6B8C9D0D /* ExerciseDbCatalog.swift */; };
+		B7E8C9032F3A4D5E6B8C9D10 /* ExerciseDbCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7E8C9002F3A4D5E6B8C9D0D /* ExerciseDbCatalog.swift */; };
+		B7E8C9052F3A4D5E6B8C9D12 /* exercise-db-catalog.json in Resources */ = {isa = PBXBuildFile; fileRef = B7E8C9042F3A4D5E6B8C9D11 /* exercise-db-catalog.json */; };
+		B7E8C9072F3A4D5E6B8C9D14 /* exercise-db-catalog.json in Resources */ = {isa = PBXBuildFile; fileRef = B7E8C9042F3A4D5E6B8C9D11 /* exercise-db-catalog.json */; };
 		A69BB5448AD6F58396E8C6E1 /* FitnessWatchAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11829726BFC67741FB1A8FD7 /* FitnessWatchAppApp.swift */; };
 		A8B5D051DC2CBCEBC7A45A7F /* LiveWorkoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7C565CBABDACF58675FF104 /* LiveWorkoutManager.swift */; };
 		AB996834A7AC6C2447AD0D40 /* FitnessWatchAppExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E37C4718ACA019898E655336 /* FitnessWatchAppExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -75,6 +79,8 @@
 		33370CB6BFB9EFB3A4AAB4EF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		43794B42389C7ECF1ABD655E /* FitnessAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FitnessAppApp.swift; sourceTree = "<group>"; };
 		4CE77883D44517291BC6B7CC /* AppModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModels.swift; sourceTree = "<group>"; };
+		B7E8C9002F3A4D5E6B8C9D0D /* ExerciseDbCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseDbCatalog.swift; sourceTree = "<group>"; };
+		B7E8C9042F3A4D5E6B8C9D11 /* exercise-db-catalog.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "exercise-db-catalog.json"; sourceTree = "<group>"; };
 		74490C8820EBF9BC632C84FD /* PersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceController.swift; sourceTree = "<group>"; };
 		7726BB3ABD771FD44D661DF9 /* HealthKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitService.swift; sourceTree = "<group>"; };
 		962D7FEDA5381654F37AB668 /* FitnessWatchAppExtension-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "FitnessWatchAppExtension-Info.plist"; sourceTree = "<group>"; };
@@ -95,6 +101,7 @@
 				7726BB3ABD771FD44D661DF9 /* HealthKitService.swift */,
 				E7C565CBABDACF58675FF104 /* LiveWorkoutManager.swift */,
 				559AD0EEC80489C9A76FCF32 /* Domain */,
+				B7E8C9022F3A4D5E6B8C9D0F /* Resources */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -103,8 +110,17 @@
 			isa = PBXGroup;
 			children = (
 				4CE77883D44517291BC6B7CC /* AppModels.swift */,
+				B7E8C9002F3A4D5E6B8C9D0D /* ExerciseDbCatalog.swift */,
 			);
 			path = Domain;
+			sourceTree = "<group>";
+		};
+		B7E8C9022F3A4D5E6B8C9D0F /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				B7E8C9042F3A4D5E6B8C9D11 /* exercise-db-catalog.json */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 		7A0624A72FC1D3B78F736B44 /* FitnessApp */ = {
@@ -248,6 +264,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D68FCD8F3B6A23E4F509613A /* Assets.xcassets in Resources */,
+				B7E8C9052F3A4D5E6B8C9D12 /* exercise-db-catalog.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -264,6 +281,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0FA7473349B301DCC5AB354B /* Assets.xcassets in Resources */,
+				B7E8C9072F3A4D5E6B8C9D14 /* exercise-db-catalog.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -275,6 +293,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A528819584C0AC5F4FD5DD05 /* AppModels.swift in Sources */,
+				B7E8C9012F3A4D5E6B8C9D0E /* ExerciseDbCatalog.swift in Sources */,
 				A69BB5448AD6F58396E8C6E1 /* FitnessWatchAppApp.swift in Sources */,
 				0E63E85D799634EE8336ABD2 /* HealthKitService.swift in Sources */,
 				7D22765354BBEDF928EF14E7 /* LiveWorkoutManager.swift in Sources */,
@@ -286,6 +305,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				EF38DAB34CEF26D050B27B1E /* AppModels.swift in Sources */,
+				B7E8C9032F3A4D5E6B8C9D10 /* ExerciseDbCatalog.swift in Sources */,
 				6461E1FDC9EF5C2B4EA895DC /* AppStore+Persistence.swift in Sources */,
 				5064C04B8C96D4E65AA7D859 /* ContentView.swift in Sources */,
 				CBE06C7C2E6FCA855B9BB7BF /* FitnessAppApp.swift in Sources */,

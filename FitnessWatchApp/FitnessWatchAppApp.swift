@@ -42,6 +42,8 @@ private struct WatchRootView: View {
     @State private var hasActiveWorkout: Bool = false
     @State private var completedExercises: [WatchCompletedExercise] = []
     @State private var isShowingOtherExercisePicker = false
+    /// New UUID each time we open the exercise timer so `.task(id:)` runs resume even for the same exercise twice.
+    @State private var exerciseTimerResumeToken = UUID()
 
     var body: some View {
         Group {
@@ -94,11 +96,18 @@ private struct WatchRootView: View {
                 totalExerciseDuration: totalExerciseDuration,
                 onSelectExercise: { exercise in
                     activeExercise = exercise
-                    if !hasActiveWorkout {
-                        hasActiveWorkout = true
-                        try? liveWorkout.start(activityTypeName: selectedActivityType)
+                    Task { @MainActor in
+                        if !hasActiveWorkout {
+                            do {
+                                try await liveWorkout.start(activityTypeName: selectedActivityType)
+                                hasActiveWorkout = true
+                            } catch {
+                                return
+                            }
+                        }
+                        exerciseTimerResumeToken = UUID()
+                        phase = .exerciseTimer
                     }
-                    phase = .exerciseTimer
                 },
                 onTapOther: { isShowingOtherExercisePicker = true },
                 onFinish: {
@@ -151,14 +160,23 @@ private struct WatchRootView: View {
                     activeCalories: liveWorkout.activeCalories,
                     totalCalories: liveWorkout.totalCalories,
                     onFinish: { elapsed in
-                        completedExercises.append(WatchCompletedExercise(title: exercise.name, durationSeconds: elapsed))
-                        totalExerciseDuration += elapsed
-                        phase = .chooseExercise
+                        Task { @MainActor in
+                            await liveWorkout.pauseWorkout()
+                            completedExercises.append(WatchCompletedExercise(title: exercise.name, durationSeconds: elapsed))
+                            totalExerciseDuration += elapsed
+                            phase = .chooseExercise
+                        }
                     },
                     onCancel: {
-                        phase = .chooseExercise
+                        Task { @MainActor in
+                            await liveWorkout.pauseWorkout()
+                            phase = .chooseExercise
+                        }
                     }
                 )
+                .task(id: exerciseTimerResumeToken) {
+                    await liveWorkout.resumeWorkout()
+                }
             } else {
                 // Safety fallback – show chooser again.
                 ChooseActivityView(

@@ -1,0 +1,1340 @@
+[
+  {
+    "app_id": "goblet-squat",
+    "app_name": "Goblet Squat",
+    "category": "lower-body",
+    "exercisedb_name": "dumbbell goblet squat",
+    "free_exercise_db_name": "Goblet Squat",
+    "alt_search_terms": [
+      "goblet squat",
+      "dumbbell squat front hold"
+    ],
+    "equipment": "dumbbell",
+    "target_muscle": "quads",
+    "matched": true,
+    "db_name": "dumbbell goblet squat",
+    "db_id": "yn8yg1r",
+    "gifUrl": "https://static.exercisedb.dev/media/yn8yg1r.gif"
+  },
+  {
+    "app_id": "back-squat",
+    "app_name": "Back Squat",
+    "category": "lower-body",
+    "exercisedb_name": "barbell full squat",
+    "free_exercise_db_name": "Barbell Squat",
+    "alt_search_terms": [
+      "barbell squat",
+      "back squat",
+      "barbell full squat"
+    ],
+    "equipment": "barbell",
+    "target_muscle": "quads",
+    "matched": true,
+    "db_name": "barbell full squat",
+    "db_id": "qXTaZnJ",
+    "gifUrl": "https://static.exercisedb.dev/media/qXTaZnJ.gif"
+  },
+  {
+    "app_id": "step-up",
+    "app_name": "Step-Up",
+    "category": "lower-body",
+    "exercisedb_name": "barbell step ups",
+    "free_exercise_db_name": "Barbell Step Ups",
+    "alt_search_terms": [
+      "step up",
+      "dumbbell step ups",
+      "barbell step ups"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "quads",
+    "matched": true,
+    "db_name": "dumbbell step up single leg balance with bicep curl",
+    "db_id": "76vfTdU",
+    "gifUrl": "https://static.exercisedb.dev/media/76vfTdU.gif"
+  },
+  {
+    "app_id": "reverse-lunge",
+    "app_name": "Reverse Lunge",
+    "category": "lower-body",
+    "exercisedb_name": "dumbbell rear lunge",
+    "free_exercise_db_name": "Dumbbell Rear Lunge",
+    "alt_search_terms": [
+      "reverse lunge",
+      "rear lunge",
+      "step back lunge"
+    ],
+    "equipment": "dumbbell",
+    "target_muscle": "quads",
+    "matched": true,
+    "db_name": "dumbbell rear lunge",
+    "db_id": "SSsBDwB",
+    "gifUrl": "https://static.exercisedb.dev/media/SSsBDwB.gif"
+  },
+  {
+    "app_id": "regular-lunge",
+    "app_name": "Regular Lunge",
+    "category": "lower-body",
+    "exercisedb_name": "barbell lunge",
+    "free_exercise_db_name": "Barbell Lunge",
+    "alt_search_terms": [
+      "lunge",
+      "forward lunge",
+      "walking lunge"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "quads",
+    "matched": true,
+    "db_name": "barbell lunge",
+    "db_id": "t8iSghb",
+    "gifUrl": "https://static.exercisedb.dev/media/t8iSghb.gif"
+  },
+  {
+    "app_id": "hip-thrust",
+    "app_name": "Hip Thrust",
+    "category": "lower-body",
+    "exercisedb_name": "barbell hip thrust",
+    "free_exercise_db_name": "Barbell Hip Thrust",
+    "alt_search_terms": [
+      "hip thrust",
+      "barbell hip thrust",
+      "glute thrust"
+    ],
+    "equipment": "barbell",
+    "target_muscle": "glutes",
+    "matched": true,
+    "db_name": "resistance band hip thrusts on knees (female)",
+    "db_id": "Pjbc0Kt",
+    "gifUrl": "https://static.exercisedb.dev/media/Pjbc0Kt.gif"
+  },
+  {
+    "app_id": "leg-curl",
+    "app_name": "Leg Curl",
+    "category": "lower-body",
+    "exercisedb_name": "lever lying leg curl",
+    "free_exercise_db_name": "Lying Leg Curls",
+    "alt_search_terms": [
+      "leg curl",
+      "lying leg curl",
+      "hamstring curl",
+      "prone leg curl"
+    ],
+    "equipment": "machine",
+    "target_muscle": "hamstrings",
+    "matched": true,
+    "db_name": "lever lying leg curl",
+    "db_id": "17lJ1kr",
+    "gifUrl": "https://static.exercisedb.dev/media/17lJ1kr.gif"
+  },
+  {
+    "app_id": "leg-press",
+    "app_name": "Leg Press",
+    "category": "lower-body",
+    "exercisedb_name": "lever leg press",
+    "free_exercise_db_name": "Leg Press",
+    "alt_search_terms": [
+      "leg press",
+      "machine leg press",
+      "45 degree leg press"
+    ],
+    "equipment": "machine",
+    "target_muscle": "quads",
+    "matched": true,
+    "db_name": "lever alternate leg press",
+    "db_id": "V07qpXy",
+    "gifUrl": "https://static.exercisedb.dev/media/V07qpXy.gif"
+  },
+  {
+    "app_id": "leg-extension",
+    "app_name": "Leg Extension",
+    "category": "lower-body",
+    "exercisedb_name": "lever leg extension",
+    "free_exercise_db_name": "Leg Extensions",
+    "alt_search_terms": [
+      "leg extension",
+      "machine leg extension",
+      "quad extension"
+    ],
+    "equipment": "machine",
+    "target_muscle": "quads",
+    "matched": true,
+    "db_name": "lever leg extension",
+    "db_id": "my33uHU",
+    "gifUrl": "https://static.exercisedb.dev/media/my33uHU.gif"
+  },
+  {
+    "app_id": "glute-bridge",
+    "app_name": "Glute Bridge",
+    "category": "lower-body",
+    "exercisedb_name": "barbell glute bridge",
+    "free_exercise_db_name": "Barbell Glute Bridge",
+    "alt_search_terms": [
+      "glute bridge",
+      "bridge",
+      "hip bridge"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "glutes",
+    "matched": true,
+    "db_name": "barbell glute bridge",
+    "db_id": "qKBpF7I",
+    "gifUrl": "https://static.exercisedb.dev/media/qKBpF7I.gif"
+  },
+  {
+    "app_id": "cable-kickback",
+    "app_name": "Cable Kickback",
+    "category": "lower-body",
+    "exercisedb_name": "cable kickback",
+    "free_exercise_db_name": null,
+    "alt_search_terms": [
+      "cable kickback",
+      "cable glute kickback",
+      "glute kickback"
+    ],
+    "equipment": "cable",
+    "target_muscle": "glutes",
+    "matched": true,
+    "db_name": "cable kickback",
+    "db_id": "HEJ6DIX",
+    "gifUrl": "https://static.exercisedb.dev/media/HEJ6DIX.gif"
+  },
+  {
+    "app_id": "frog-pump",
+    "app_name": "Frog Pump",
+    "category": "lower-body",
+    "exercisedb_name": "frog pump",
+    "free_exercise_db_name": null,
+    "alt_search_terms": [
+      "frog pump",
+      "butterfly bridge",
+      "frog bridge"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "glutes",
+    "matched": false,
+    "db_name": null,
+    "db_id": null,
+    "gifUrl": null
+  },
+  {
+    "app_id": "clam-shell",
+    "app_name": "Clam Shell",
+    "category": "lower-body",
+    "exercisedb_name": "side lying clam",
+    "free_exercise_db_name": null,
+    "alt_search_terms": [
+      "clamshell",
+      "clam shell",
+      "side lying clam",
+      "clam"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "glutes",
+    "matched": false,
+    "db_name": null,
+    "db_id": null,
+    "gifUrl": null
+  },
+  {
+    "app_id": "push-up",
+    "app_name": "Push-Up",
+    "category": "push",
+    "exercisedb_name": "push-up",
+    "free_exercise_db_name": "Pushups",
+    "alt_search_terms": [
+      "push up",
+      "pushup",
+      "press up"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "chest",
+    "matched": true,
+    "db_name": "push-up",
+    "db_id": "I4hDWkc",
+    "gifUrl": "https://static.exercisedb.dev/media/I4hDWkc.gif"
+  },
+  {
+    "app_id": "flat-barbell-bench-press",
+    "app_name": "Flat Barbell Bench Press",
+    "category": "push",
+    "exercisedb_name": "barbell bench press",
+    "free_exercise_db_name": "Barbell Bench Press - Medium Grip",
+    "alt_search_terms": [
+      "barbell bench press",
+      "flat bench press",
+      "bench press"
+    ],
+    "equipment": "barbell",
+    "target_muscle": "chest",
+    "matched": true,
+    "db_name": "barbell bench press",
+    "db_id": "EIeI8Vf",
+    "gifUrl": "https://static.exercisedb.dev/media/EIeI8Vf.gif"
+  },
+  {
+    "app_id": "incline-barbell-bench-press",
+    "app_name": "Incline Barbell Bench Press",
+    "category": "push",
+    "exercisedb_name": "barbell incline bench press",
+    "free_exercise_db_name": "Barbell Incline Bench Press - Medium Grip",
+    "alt_search_terms": [
+      "incline bench press",
+      "incline barbell bench press"
+    ],
+    "equipment": "barbell",
+    "target_muscle": "chest",
+    "matched": true,
+    "db_name": "barbell incline bench press",
+    "db_id": "3TZduzM",
+    "gifUrl": "https://static.exercisedb.dev/media/3TZduzM.gif"
+  },
+  {
+    "app_id": "decline-barbell-bench-press",
+    "app_name": "Decline Barbell Bench Press",
+    "category": "push",
+    "exercisedb_name": "barbell decline bench press",
+    "free_exercise_db_name": "Decline Barbell Bench Press",
+    "alt_search_terms": [
+      "decline bench press",
+      "decline barbell bench press"
+    ],
+    "equipment": "barbell",
+    "target_muscle": "chest",
+    "matched": true,
+    "db_name": "barbell decline bench press",
+    "db_id": "GrO65fd",
+    "gifUrl": "https://static.exercisedb.dev/media/GrO65fd.gif"
+  },
+  {
+    "app_id": "flat-dumbbell-bench-press",
+    "app_name": "Flat Dumbbell Bench Press",
+    "category": "push",
+    "exercisedb_name": "dumbbell bench press",
+    "free_exercise_db_name": "Dumbbell Bench Press",
+    "alt_search_terms": [
+      "dumbbell bench press",
+      "flat dumbbell press"
+    ],
+    "equipment": "dumbbell",
+    "target_muscle": "chest",
+    "matched": true,
+    "db_name": "dumbbell bench press",
+    "db_id": "SpYC0Kp",
+    "gifUrl": "https://static.exercisedb.dev/media/SpYC0Kp.gif"
+  },
+  {
+    "app_id": "incline-dumbbell-bench-press",
+    "app_name": "Incline Dumbbell Bench Press",
+    "category": "push",
+    "exercisedb_name": "dumbbell incline bench press",
+    "free_exercise_db_name": "Incline Dumbbell Bench Press",
+    "alt_search_terms": [
+      "incline dumbbell bench press",
+      "incline dumbbell press"
+    ],
+    "equipment": "dumbbell",
+    "target_muscle": "chest",
+    "matched": true,
+    "db_name": "dumbbell incline bench press",
+    "db_id": "ns0SIbU",
+    "gifUrl": "https://static.exercisedb.dev/media/ns0SIbU.gif"
+  },
+  {
+    "app_id": "decline-dumbbell-bench-press",
+    "app_name": "Decline Dumbbell Bench Press",
+    "category": "push",
+    "exercisedb_name": "dumbbell decline bench press",
+    "free_exercise_db_name": "Decline Dumbbell Bench Press",
+    "alt_search_terms": [
+      "decline dumbbell bench press",
+      "decline dumbbell press"
+    ],
+    "equipment": "dumbbell",
+    "target_muscle": "chest",
+    "matched": true,
+    "db_name": "dumbbell decline bench press",
+    "db_id": "DwhEmmE",
+    "gifUrl": "https://static.exercisedb.dev/media/DwhEmmE.gif"
+  },
+  {
+    "app_id": "cable-chest-press",
+    "app_name": "Cable Chest Press",
+    "category": "push",
+    "exercisedb_name": "cable chest press",
+    "free_exercise_db_name": null,
+    "alt_search_terms": [
+      "cable chest press",
+      "standing cable press"
+    ],
+    "equipment": "cable",
+    "target_muscle": "chest",
+    "matched": false,
+    "db_name": null,
+    "db_id": null,
+    "gifUrl": null
+  },
+  {
+    "app_id": "cable-crossover",
+    "app_name": "Cable Crossover",
+    "category": "push",
+    "exercisedb_name": "cable crossover",
+    "free_exercise_db_name": "Cable Crossover",
+    "alt_search_terms": [
+      "cable crossover",
+      "cable fly",
+      "cable chest fly"
+    ],
+    "equipment": "cable",
+    "target_muscle": "chest",
+    "matched": false,
+    "db_name": null,
+    "db_id": null,
+    "gifUrl": null
+  },
+  {
+    "app_id": "machine-chest-fly",
+    "app_name": "Machine Chest Fly",
+    "category": "push",
+    "exercisedb_name": "lever pec deck fly",
+    "free_exercise_db_name": "Butterfly",
+    "alt_search_terms": [
+      "chest fly machine",
+      "pec deck fly",
+      "pec deck",
+      "machine fly"
+    ],
+    "equipment": "machine",
+    "target_muscle": "chest",
+    "matched": false,
+    "db_name": null,
+    "db_id": null,
+    "gifUrl": null
+  },
+  {
+    "app_id": "standing-overhead-press",
+    "app_name": "Standing Overhead Press",
+    "category": "push",
+    "exercisedb_name": "barbell standing military press",
+    "free_exercise_db_name": "Standing Military Press",
+    "alt_search_terms": [
+      "overhead press",
+      "military press",
+      "standing press"
+    ],
+    "equipment": "barbell",
+    "target_muscle": "shoulders",
+    "matched": true,
+    "db_name": "dumbbell standing alternate overhead press",
+    "db_id": "bBi35y3",
+    "gifUrl": "https://static.exercisedb.dev/media/bBi35y3.gif"
+  },
+  {
+    "app_id": "shoulder-press",
+    "app_name": "Shoulder Press",
+    "category": "push",
+    "exercisedb_name": "barbell seated overhead press",
+    "free_exercise_db_name": "Barbell Shoulder Press",
+    "alt_search_terms": [
+      "shoulder press",
+      "seated barbell press",
+      "seated overhead press"
+    ],
+    "equipment": "barbell",
+    "target_muscle": "shoulders",
+    "matched": true,
+    "db_name": "barbell seated overhead press",
+    "db_id": "kTbSH9h",
+    "gifUrl": "https://static.exercisedb.dev/media/kTbSH9h.gif"
+  },
+  {
+    "app_id": "dumbbell-shoulder-press",
+    "app_name": "Dumbbell Shoulder Press",
+    "category": "push",
+    "exercisedb_name": "dumbbell shoulder press",
+    "free_exercise_db_name": "Dumbbell Shoulder Press",
+    "alt_search_terms": [
+      "dumbbell shoulder press",
+      "dumbbell overhead press",
+      "seated dumbbell press"
+    ],
+    "equipment": "dumbbell",
+    "target_muscle": "shoulders",
+    "matched": false,
+    "db_name": null,
+    "db_id": null,
+    "gifUrl": null
+  },
+  {
+    "app_id": "arnold-press",
+    "app_name": "Arnold Press",
+    "category": "push",
+    "exercisedb_name": "dumbbell arnold press",
+    "free_exercise_db_name": "Arnold Dumbbell Press",
+    "alt_search_terms": [
+      "arnold press",
+      "arnold dumbbell press"
+    ],
+    "equipment": "dumbbell",
+    "target_muscle": "shoulders",
+    "matched": true,
+    "db_name": "dumbbell arnold press",
+    "db_id": "Xy4jlWA",
+    "gifUrl": "https://static.exercisedb.dev/media/Xy4jlWA.gif"
+  },
+  {
+    "app_id": "dumbbell-front-raise",
+    "app_name": "Dumbbell Front Raise",
+    "category": "push",
+    "exercisedb_name": "dumbbell front raise",
+    "free_exercise_db_name": "Front Dumbbell Raise",
+    "alt_search_terms": [
+      "front raise",
+      "dumbbell front raise"
+    ],
+    "equipment": "dumbbell",
+    "target_muscle": "shoulders",
+    "matched": true,
+    "db_name": "dumbbell front raise",
+    "db_id": "3eGE2JC",
+    "gifUrl": "https://static.exercisedb.dev/media/3eGE2JC.gif"
+  },
+  {
+    "app_id": "dumbbell-lateral-raise",
+    "app_name": "Dumbbell Lateral Raise",
+    "category": "push",
+    "exercisedb_name": "dumbbell lateral raise",
+    "free_exercise_db_name": "Side Lateral Raise",
+    "alt_search_terms": [
+      "lateral raise",
+      "side raise",
+      "dumbbell lateral raise"
+    ],
+    "equipment": "dumbbell",
+    "target_muscle": "shoulders",
+    "matched": true,
+    "db_name": "dumbbell lateral raise",
+    "db_id": "DsgkuIt",
+    "gifUrl": "https://static.exercisedb.dev/media/DsgkuIt.gif"
+  },
+  {
+    "app_id": "tricep-pulldown",
+    "app_name": "Tricep Pulldown",
+    "category": "push",
+    "exercisedb_name": "cable pushdown",
+    "free_exercise_db_name": "Triceps Pushdown",
+    "alt_search_terms": [
+      "tricep pushdown",
+      "cable pushdown",
+      "tricep pulldown",
+      "rope pushdown"
+    ],
+    "equipment": "cable",
+    "target_muscle": "triceps",
+    "matched": true,
+    "db_name": "cable pushdown",
+    "db_id": "3ZflifB",
+    "gifUrl": "https://static.exercisedb.dev/media/3ZflifB.gif"
+  },
+  {
+    "app_id": "tricep-press",
+    "app_name": "Tricep Press",
+    "category": "push",
+    "exercisedb_name": "dumbbell overhead triceps extension",
+    "free_exercise_db_name": "Dumbbell One-Arm Triceps Extension",
+    "alt_search_terms": [
+      "tricep extension",
+      "overhead tricep extension",
+      "skull crusher"
+    ],
+    "equipment": "dumbbell",
+    "target_muscle": "triceps",
+    "matched": true,
+    "db_name": "cable rope high pulley overhead tricep extension",
+    "db_id": "NN8nSNT",
+    "gifUrl": "https://static.exercisedb.dev/media/NN8nSNT.gif"
+  },
+  {
+    "app_id": "machine-reverse-fly",
+    "app_name": "Machine Reverse Fly",
+    "category": "pull",
+    "exercisedb_name": "lever reverse fly",
+    "free_exercise_db_name": "Reverse Machine Flyes",
+    "alt_search_terms": [
+      "reverse fly",
+      "reverse pec deck",
+      "rear delt fly machine"
+    ],
+    "equipment": "machine",
+    "target_muscle": "rear delts",
+    "matched": true,
+    "db_name": "cable supine reverse fly",
+    "db_id": "PQcUlDi",
+    "gifUrl": "https://static.exercisedb.dev/media/PQcUlDi.gif"
+  },
+  {
+    "app_id": "single-arm-dumbbell-row",
+    "app_name": "Single-Arm Dumbbell Row",
+    "category": "pull",
+    "exercisedb_name": "dumbbell bent over row",
+    "free_exercise_db_name": "Dumbbell One-Arm Row",
+    "alt_search_terms": [
+      "one arm dumbbell row",
+      "single arm row",
+      "dumbbell row"
+    ],
+    "equipment": "dumbbell",
+    "target_muscle": "lats",
+    "matched": true,
+    "db_name": "dumbbell bent over row",
+    "db_id": "BJ0Hz5L",
+    "gifUrl": "https://static.exercisedb.dev/media/BJ0Hz5L.gif"
+  },
+  {
+    "app_id": "machine-row",
+    "app_name": "Machine Row",
+    "category": "pull",
+    "exercisedb_name": "lever seated row",
+    "free_exercise_db_name": "Machine Seated Row",
+    "alt_search_terms": [
+      "machine row",
+      "seated machine row",
+      "lever row"
+    ],
+    "equipment": "machine",
+    "target_muscle": "lats",
+    "matched": true,
+    "db_name": "lever seated row",
+    "db_id": "7I6LNUG",
+    "gifUrl": "https://static.exercisedb.dev/media/7I6LNUG.gif"
+  },
+  {
+    "app_id": "seated-cable-row",
+    "app_name": "Seated Cable Row",
+    "category": "pull",
+    "exercisedb_name": "cable seated row",
+    "free_exercise_db_name": "Seated Cable Rows",
+    "alt_search_terms": [
+      "seated cable row",
+      "cable row",
+      "low row"
+    ],
+    "equipment": "cable",
+    "target_muscle": "lats",
+    "matched": true,
+    "db_name": "cable seated row",
+    "db_id": "fUBheHs",
+    "gifUrl": "https://static.exercisedb.dev/media/fUBheHs.gif"
+  },
+  {
+    "app_id": "chest-supported-row",
+    "app_name": "Chest-Supported Row",
+    "category": "pull",
+    "exercisedb_name": "dumbbell incline row",
+    "free_exercise_db_name": null,
+    "alt_search_terms": [
+      "chest supported row",
+      "incline dumbbell row",
+      "prone row",
+      "seal row"
+    ],
+    "equipment": "dumbbell",
+    "target_muscle": "lats",
+    "matched": true,
+    "db_name": "dumbbell incline row",
+    "db_id": "7vG5o25",
+    "gifUrl": "https://static.exercisedb.dev/media/7vG5o25.gif"
+  },
+  {
+    "app_id": "face-pull",
+    "app_name": "Face Pull",
+    "category": "pull",
+    "exercisedb_name": "cable face pull",
+    "free_exercise_db_name": "Face Pull",
+    "alt_search_terms": [
+      "face pull",
+      "cable face pull",
+      "rope face pull"
+    ],
+    "equipment": "cable",
+    "target_muscle": "rear delts",
+    "matched": false,
+    "db_name": null,
+    "db_id": null,
+    "gifUrl": null
+  },
+  {
+    "app_id": "pull-up",
+    "app_name": "Pull-Up",
+    "category": "pull",
+    "exercisedb_name": "pull-up",
+    "free_exercise_db_name": "Pullups",
+    "alt_search_terms": [
+      "pull up",
+      "pullup",
+      "chin up"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "lats",
+    "matched": true,
+    "db_name": "pull-up",
+    "db_id": "lBDjFxJ",
+    "gifUrl": "https://static.exercisedb.dev/media/lBDjFxJ.gif"
+  },
+  {
+    "app_id": "lat-pulldown",
+    "app_name": "Lat Pulldown",
+    "category": "pull",
+    "exercisedb_name": "cable lat pulldown",
+    "free_exercise_db_name": "Wide-Grip Lat Pulldown",
+    "alt_search_terms": [
+      "lat pulldown",
+      "cable pulldown",
+      "wide grip pulldown"
+    ],
+    "equipment": "cable",
+    "target_muscle": "lats",
+    "matched": true,
+    "db_name": "cable lat pulldown full range of motion",
+    "db_id": "LEprlgG",
+    "gifUrl": "https://static.exercisedb.dev/media/LEprlgG.gif"
+  },
+  {
+    "app_id": "dumbbell-curl",
+    "app_name": "Dumbbell Curl",
+    "category": "pull",
+    "exercisedb_name": "dumbbell bicep curl",
+    "free_exercise_db_name": "Dumbbell Bicep Curl",
+    "alt_search_terms": [
+      "dumbbell curl",
+      "bicep curl",
+      "standing curl"
+    ],
+    "equipment": "dumbbell",
+    "target_muscle": "biceps",
+    "matched": true,
+    "db_name": "dumbbell bicep curl with stork stance",
+    "db_id": "uSkDMYl",
+    "gifUrl": "https://static.exercisedb.dev/media/uSkDMYl.gif"
+  },
+  {
+    "app_id": "preacher-bar-curl",
+    "app_name": "Preacher Bar Curl",
+    "category": "pull",
+    "exercisedb_name": "barbell preacher curl",
+    "free_exercise_db_name": "Preacher Curl",
+    "alt_search_terms": [
+      "preacher curl",
+      "ez bar preacher curl",
+      "barbell preacher curl"
+    ],
+    "equipment": "barbell",
+    "target_muscle": "biceps",
+    "matched": true,
+    "db_name": "barbell preacher curl",
+    "db_id": "qOgPVf6",
+    "gifUrl": "https://static.exercisedb.dev/media/qOgPVf6.gif"
+  },
+  {
+    "app_id": "dead-bug",
+    "app_name": "Dead Bug",
+    "category": "core",
+    "exercisedb_name": "dead bug",
+    "free_exercise_db_name": null,
+    "alt_search_terms": [
+      "dead bug",
+      "supine dead bug"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "abs",
+    "matched": true,
+    "db_name": "dead bug",
+    "db_id": "iny3m5y",
+    "gifUrl": "https://static.exercisedb.dev/media/iny3m5y.gif"
+  },
+  {
+    "app_id": "side-plank",
+    "app_name": "Side Plank",
+    "category": "core",
+    "exercisedb_name": "side plank",
+    "free_exercise_db_name": "Side Bridge",
+    "alt_search_terms": [
+      "side plank",
+      "side bridge",
+      "lateral plank"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "obliques",
+    "matched": true,
+    "db_name": "dumbbell side plank with rear fly",
+    "db_id": "X6ytgYZ",
+    "gifUrl": "https://static.exercisedb.dev/media/X6ytgYZ.gif"
+  },
+  {
+    "app_id": "cable-crunch",
+    "app_name": "Cable Crunch",
+    "category": "core",
+    "exercisedb_name": "cable crunch",
+    "free_exercise_db_name": "Cable Crunch",
+    "alt_search_terms": [
+      "cable crunch",
+      "kneeling cable crunch"
+    ],
+    "equipment": "cable",
+    "target_muscle": "abs",
+    "matched": false,
+    "db_name": null,
+    "db_id": null,
+    "gifUrl": null
+  },
+  {
+    "app_id": "machine-crunch",
+    "app_name": "Machine Crunch",
+    "category": "core",
+    "exercisedb_name": "lever crunch",
+    "free_exercise_db_name": "Ab Crunch Machine",
+    "alt_search_terms": [
+      "machine crunch",
+      "ab crunch machine",
+      "crunch machine"
+    ],
+    "equipment": "machine",
+    "target_muscle": "abs",
+    "matched": false,
+    "db_name": null,
+    "db_id": null,
+    "gifUrl": null
+  },
+  {
+    "app_id": "medicine-ball-situp-to-twist",
+    "app_name": "Medicine Ball Situp to Twist",
+    "category": "core",
+    "exercisedb_name": "medicine ball sit up with twist",
+    "free_exercise_db_name": null,
+    "alt_search_terms": [
+      "medicine ball situp twist",
+      "med ball situp",
+      "weighted situp twist"
+    ],
+    "equipment": "medicine ball",
+    "target_muscle": "abs",
+    "matched": false,
+    "db_name": null,
+    "db_id": null,
+    "gifUrl": null
+  },
+  {
+    "app_id": "medicine-ball-russian-twist",
+    "app_name": "Medicine Ball Russian Twist",
+    "category": "core",
+    "exercisedb_name": "weighted russian twist",
+    "free_exercise_db_name": "Russian Twist",
+    "alt_search_terms": [
+      "russian twist",
+      "medicine ball russian twist",
+      "med ball twist"
+    ],
+    "equipment": "medicine ball",
+    "target_muscle": "obliques",
+    "matched": true,
+    "db_name": "weighted russian twist",
+    "db_id": "fZFZ704",
+    "gifUrl": "https://static.exercisedb.dev/media/fZFZ704.gif"
+  },
+  {
+    "app_id": "sit-up",
+    "app_name": "Sit-Up",
+    "category": "core",
+    "exercisedb_name": "sit-up",
+    "free_exercise_db_name": "3/4 Sit-Up",
+    "alt_search_terms": [
+      "sit up",
+      "situp",
+      "crunch"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "abs",
+    "matched": true,
+    "db_name": "barbell press sit-up",
+    "db_id": "wnEscH8",
+    "gifUrl": "https://static.exercisedb.dev/media/wnEscH8.gif"
+  },
+  {
+    "app_id": "mountain-climbers",
+    "app_name": "Mountain Climbers",
+    "category": "core",
+    "exercisedb_name": "mountain climber",
+    "free_exercise_db_name": "Mountain Climbers",
+    "alt_search_terms": [
+      "mountain climber",
+      "mountain climbers"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "abs",
+    "matched": true,
+    "db_name": "mountain climber",
+    "db_id": "RJgzwny",
+    "gifUrl": "https://static.exercisedb.dev/media/RJgzwny.gif"
+  },
+  {
+    "app_id": "beast-hold",
+    "app_name": "Beast Hold",
+    "category": "core",
+    "exercisedb_name": "bear crawl",
+    "free_exercise_db_name": null,
+    "alt_search_terms": [
+      "beast hold",
+      "bear crawl hold",
+      "quadruped hold",
+      "fire hydrant hold"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "abs",
+    "matched": true,
+    "db_name": "bear crawl",
+    "db_id": "0Yz8WdV",
+    "gifUrl": "https://static.exercisedb.dev/media/0Yz8WdV.gif"
+  },
+  {
+    "app_id": "plank",
+    "app_name": "Plank",
+    "category": "core",
+    "exercisedb_name": "front plank",
+    "free_exercise_db_name": "Plank",
+    "alt_search_terms": [
+      "plank",
+      "forearm plank",
+      "front plank"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "abs",
+    "matched": true,
+    "db_name": "weighted front plank",
+    "db_id": "VBAWRPG",
+    "gifUrl": "https://static.exercisedb.dev/media/VBAWRPG.gif"
+  },
+  {
+    "app_id": "bicycle-crunch",
+    "app_name": "Bicycle Crunch",
+    "category": "core",
+    "exercisedb_name": "bicycle crunch",
+    "free_exercise_db_name": "Air Bike",
+    "alt_search_terms": [
+      "bicycle crunch",
+      "bicycle crunches",
+      "air bike"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "abs",
+    "matched": true,
+    "db_name": "band bicycle crunch",
+    "db_id": "tZkGYZ9",
+    "gifUrl": "https://static.exercisedb.dev/media/tZkGYZ9.gif"
+  },
+  {
+    "app_id": "hollow-hold",
+    "app_name": "Hollow Hold",
+    "category": "core",
+    "exercisedb_name": "hollow body hold",
+    "free_exercise_db_name": null,
+    "alt_search_terms": [
+      "hollow hold",
+      "hollow body",
+      "hollow body hold"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "abs",
+    "matched": false,
+    "db_name": null,
+    "db_id": null,
+    "gifUrl": null
+  },
+  {
+    "app_id": "bird-dog",
+    "app_name": "Bird Dog",
+    "category": "core",
+    "exercisedb_name": "bird dog",
+    "free_exercise_db_name": "Bird Dog",
+    "alt_search_terms": [
+      "bird dog",
+      "quadruped arm leg raise"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "abs",
+    "matched": false,
+    "db_name": null,
+    "db_id": null,
+    "gifUrl": null
+  },
+  {
+    "app_id": "reverse-crunch",
+    "app_name": "Reverse Crunch",
+    "category": "core",
+    "exercisedb_name": "reverse crunch",
+    "free_exercise_db_name": "Reverse Crunch",
+    "alt_search_terms": [
+      "reverse crunch",
+      "reverse crunches"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "abs",
+    "matched": true,
+    "db_name": "reverse crunch",
+    "db_id": "nCU1Ekp",
+    "gifUrl": "https://static.exercisedb.dev/media/nCU1Ekp.gif"
+  },
+  {
+    "app_id": "standing-hamstring-stretch",
+    "app_name": "Standing Hamstring Stretch",
+    "category": "flexibility",
+    "exercisedb_name": "standing hamstring stretch",
+    "free_exercise_db_name": "Standing Hamstring Stretch",
+    "alt_search_terms": [
+      "standing hamstring stretch",
+      "toe touch stretch"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "hamstrings",
+    "matched": true,
+    "db_name": "hamstring stretch",
+    "db_id": "99rWm7w",
+    "gifUrl": "https://static.exercisedb.dev/media/99rWm7w.gif"
+  },
+  {
+    "app_id": "seated-hamstring-stretch",
+    "app_name": "Seated Hamstring Stretch",
+    "category": "flexibility",
+    "exercisedb_name": "seated hamstring stretch",
+    "free_exercise_db_name": "Seated Hamstring Stretch",
+    "alt_search_terms": [
+      "seated hamstring stretch",
+      "seated toe touch"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "hamstrings",
+    "matched": true,
+    "db_name": "exercise ball seated hamstring stretch",
+    "db_id": "yRYyfdA",
+    "gifUrl": "https://static.exercisedb.dev/media/yRYyfdA.gif"
+  },
+  {
+    "app_id": "hip-flexor-stretch",
+    "app_name": "Hip Flexor Stretch",
+    "category": "flexibility",
+    "exercisedb_name": "kneeling hip flexor stretch",
+    "free_exercise_db_name": "Kneeling Hip Flexor",
+    "alt_search_terms": [
+      "hip flexor stretch",
+      "kneeling hip flexor",
+      "lunge stretch"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "hip flexors",
+    "matched": true,
+    "db_name": "exercise ball hip flexor stretch",
+    "db_id": "2LQkNPW",
+    "gifUrl": "https://static.exercisedb.dev/media/2LQkNPW.gif"
+  },
+  {
+    "app_id": "quad-stretch",
+    "app_name": "Quad Stretch",
+    "category": "flexibility",
+    "exercisedb_name": "standing quadriceps stretch",
+    "free_exercise_db_name": "All Fours Quad Stretch",
+    "alt_search_terms": [
+      "quad stretch",
+      "standing quad stretch",
+      "quadricep stretch"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "quads",
+    "matched": true,
+    "db_name": "intermediate hip flexor and quad stretch",
+    "db_id": "tFGKm99",
+    "gifUrl": "https://static.exercisedb.dev/media/tFGKm99.gif"
+  },
+  {
+    "app_id": "calf-stretch",
+    "app_name": "Calf Stretch",
+    "category": "flexibility",
+    "exercisedb_name": "standing calf stretch",
+    "free_exercise_db_name": "Calf Stretch Hands Against Wall",
+    "alt_search_terms": [
+      "calf stretch",
+      "wall calf stretch",
+      "standing calf stretch"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "calves",
+    "matched": true,
+    "db_name": "standing hamstring and calf stretch with strap",
+    "db_id": "xTjr103",
+    "gifUrl": "https://static.exercisedb.dev/media/xTjr103.gif"
+  },
+  {
+    "app_id": "pigeon-pose",
+    "app_name": "Pigeon Pose",
+    "category": "flexibility",
+    "exercisedb_name": "pigeon pose",
+    "free_exercise_db_name": null,
+    "alt_search_terms": [
+      "pigeon pose",
+      "pigeon stretch",
+      "hip pigeon"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "glutes",
+    "matched": false,
+    "db_name": null,
+    "db_id": null,
+    "gifUrl": null
+  },
+  {
+    "app_id": "figure-four-stretch",
+    "app_name": "Figure-Four Stretch",
+    "category": "flexibility",
+    "exercisedb_name": "supine figure four stretch",
+    "free_exercise_db_name": "Ankle On The Knee",
+    "alt_search_terms": [
+      "figure four",
+      "figure 4 stretch",
+      "ankle on knee"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "glutes",
+    "matched": false,
+    "db_name": null,
+    "db_id": null,
+    "gifUrl": null
+  },
+  {
+    "app_id": "childs-pose",
+    "app_name": "Child's Pose",
+    "category": "flexibility",
+    "exercisedb_name": "childs pose",
+    "free_exercise_db_name": null,
+    "alt_search_terms": [
+      "childs pose",
+      "child's pose",
+      "balasana"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "back",
+    "matched": false,
+    "db_name": null,
+    "db_id": null,
+    "gifUrl": null
+  },
+  {
+    "app_id": "cat-cow",
+    "app_name": "Cat-Cow",
+    "category": "flexibility",
+    "exercisedb_name": "cat cow stretch",
+    "free_exercise_db_name": "Cat Stretch",
+    "alt_search_terms": [
+      "cat cow",
+      "cat stretch",
+      "cat camel"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "back",
+    "matched": false,
+    "db_name": null,
+    "db_id": null,
+    "gifUrl": null
+  },
+  {
+    "app_id": "thread-the-needle",
+    "app_name": "Thread the Needle",
+    "category": "flexibility",
+    "exercisedb_name": "thread the needle stretch",
+    "free_exercise_db_name": null,
+    "alt_search_terms": [
+      "thread the needle",
+      "thoracic rotation stretch"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "back",
+    "matched": false,
+    "db_name": null,
+    "db_id": null,
+    "gifUrl": null
+  },
+  {
+    "app_id": "doorway-chest-stretch",
+    "app_name": "Doorway Chest Stretch",
+    "category": "flexibility",
+    "exercisedb_name": "doorway chest stretch",
+    "free_exercise_db_name": null,
+    "alt_search_terms": [
+      "doorway stretch",
+      "chest stretch",
+      "pec stretch"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "chest",
+    "matched": true,
+    "db_name": "chest stretch with exercise ball",
+    "db_id": "ykA5tU7",
+    "gifUrl": "https://static.exercisedb.dev/media/ykA5tU7.gif"
+  },
+  {
+    "app_id": "cross-body-shoulder-stretch",
+    "app_name": "Cross-Body Shoulder Stretch",
+    "category": "flexibility",
+    "exercisedb_name": "cross body shoulder stretch",
+    "free_exercise_db_name": null,
+    "alt_search_terms": [
+      "cross body stretch",
+      "shoulder stretch",
+      "posterior shoulder stretch"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "shoulders",
+    "matched": true,
+    "db_name": "chest and front of shoulder stretch",
+    "db_id": "Uto7l43",
+    "gifUrl": "https://static.exercisedb.dev/media/Uto7l43.gif"
+  },
+  {
+    "app_id": "triceps-stretch",
+    "app_name": "Triceps Stretch",
+    "category": "flexibility",
+    "exercisedb_name": "overhead triceps stretch",
+    "free_exercise_db_name": null,
+    "alt_search_terms": [
+      "tricep stretch",
+      "overhead tricep stretch"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "triceps",
+    "matched": true,
+    "db_name": "overhead triceps stretch",
+    "db_id": "Z5YStHW",
+    "gifUrl": "https://static.exercisedb.dev/media/Z5YStHW.gif"
+  },
+  {
+    "app_id": "neck-side-stretch",
+    "app_name": "Neck Side Stretch",
+    "category": "flexibility",
+    "exercisedb_name": "side neck stretch",
+    "free_exercise_db_name": "Side Neck Stretch",
+    "alt_search_terms": [
+      "neck stretch",
+      "lateral neck stretch",
+      "neck side bend"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "neck",
+    "matched": true,
+    "db_name": "side push neck stretch",
+    "db_id": "oQRJYkC",
+    "gifUrl": "https://static.exercisedb.dev/media/oQRJYkC.gif"
+  },
+  {
+    "app_id": "seated-spinal-twist",
+    "app_name": "Seated Spinal Twist",
+    "category": "flexibility",
+    "exercisedb_name": "seated spinal twist",
+    "free_exercise_db_name": null,
+    "alt_search_terms": [
+      "spinal twist",
+      "seated twist",
+      "spine rotation stretch"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "back",
+    "matched": true,
+    "db_name": "weighted seated twist (on stability ball)",
+    "db_id": "s34Y4LR",
+    "gifUrl": "https://static.exercisedb.dev/media/s34Y4LR.gif"
+  },
+  {
+    "app_id": "knees-to-chest",
+    "app_name": "Knees to Chest",
+    "category": "flexibility",
+    "exercisedb_name": "lying knees to chest stretch",
+    "free_exercise_db_name": null,
+    "alt_search_terms": [
+      "knees to chest",
+      "knee hug",
+      "supine knee to chest"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "back",
+    "matched": false,
+    "db_name": null,
+    "db_id": null,
+    "gifUrl": null
+  },
+  {
+    "app_id": "worlds-greatest-stretch",
+    "app_name": "World's Greatest Stretch",
+    "category": "flexibility",
+    "exercisedb_name": "worlds greatest stretch",
+    "free_exercise_db_name": null,
+    "alt_search_terms": [
+      "worlds greatest stretch",
+      "world greatest stretch",
+      "WGS"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "hip flexors",
+    "matched": true,
+    "db_name": "world greatest stretch",
+    "db_id": "DFGXwZr",
+    "gifUrl": "https://static.exercisedb.dev/media/DFGXwZr.gif"
+  },
+  {
+    "app_id": "butterfly-stretch",
+    "app_name": "Butterfly Stretch",
+    "category": "flexibility",
+    "exercisedb_name": "butterfly stretch",
+    "free_exercise_db_name": "Butterfly",
+    "alt_search_terms": [
+      "butterfly stretch",
+      "groin stretch",
+      "seated butterfly"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "adductors",
+    "matched": false,
+    "db_name": null,
+    "db_id": null,
+    "gifUrl": null
+  },
+  {
+    "app_id": "lizard-lunge",
+    "app_name": "Lizard Lunge",
+    "category": "flexibility",
+    "exercisedb_name": "lizard pose",
+    "free_exercise_db_name": null,
+    "alt_search_terms": [
+      "lizard lunge",
+      "lizard pose",
+      "utthan pristhasana"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "hip flexors",
+    "matched": false,
+    "db_name": null,
+    "db_id": null,
+    "gifUrl": null
+  },
+  {
+    "app_id": "ninety-ninety-hip-stretch",
+    "app_name": "90/90 Hip Stretch",
+    "category": "flexibility",
+    "exercisedb_name": "90 90 hip stretch",
+    "free_exercise_db_name": "90/90 Hamstring",
+    "alt_search_terms": [
+      "90 90 stretch",
+      "90/90 hip stretch",
+      "shin box stretch"
+    ],
+    "equipment": "body weight",
+    "target_muscle": "glutes",
+    "matched": false,
+    "db_name": null,
+    "db_id": null,
+    "gifUrl": null
+  }
+]

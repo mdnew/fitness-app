@@ -16,9 +16,49 @@ final class LiveWorkoutManager: NSObject, ObservableObject {
     private var startDate: Date?
     private var timer: Timer?
 
+    /// Mirrors `HKWorkoutSession` state; updated from the delegate so we can wait for async transitions.
+    private var sessionState: HKWorkoutSessionState = .notStarted
+
     private let healthKitService = HealthKitService()
 
-    func start(activityTypeName: String) throws {
+    private static let statePollIntervalNanoseconds: UInt64 = 50_000_000 // 50 ms
+    private static let stateWaitMaxAttempts = 120 // ~6 s total
+
+    /// HealthKit only attributes active time correctly across pause/resume if matching events are appended to the builder.
+    /// Without this, finishing often leaves only the brief final `resume`→`end` window (~seconds) as “active” in Health.
+    private func appendWorkoutEvent(type: HKWorkoutEventType) {
+        guard let builder else { return }
+        let now = Date()
+        let event = HKWorkoutEvent(type: type, dateInterval: DateInterval(start: now, duration: 0), metadata: nil)
+        builder.addWorkoutEvents([event]) { _, error in
+            if let error {
+                NSLog("LiveWorkoutManager addWorkoutEvents(\(type.rawValue)) failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func refreshSessionStateFromSession() {
+        if let session {
+            sessionState = session.state
+        }
+    }
+
+    /// Waits until the delegate-driven state matches `target`, or times out.
+    private func waitForSessionState(_ target: HKWorkoutSessionState) async {
+        for _ in 0..<Self.stateWaitMaxAttempts {
+            refreshSessionStateFromSession()
+            if sessionState == target { return }
+            try? await Task.sleep(nanoseconds: Self.statePollIntervalNanoseconds)
+        }
+        refreshSessionStateFromSession()
+        if sessionState != target {
+            NSLog("LiveWorkoutManager: timed out waiting for session state \(target.rawValue), have \(sessionState.rawValue)")
+        }
+    }
+
+    /// Starts the live workout session, begins data collection, waits until **running**, then pauses and waits until **paused**
+    /// so time between exercises does not count until `resumeWorkout()` runs on the exercise timer.
+    func start(activityTypeName: String) async throws {
         let (session, builder) = try healthKitService.startLiveWorkout(activityTypeName: activityTypeName)
         self.session = session
         self.builder = builder
@@ -29,9 +69,57 @@ final class LiveWorkoutManager: NSObject, ObservableObject {
         let now = Date()
         self.startDate = now
         self.isRunning = true
+        sessionState = session.state
 
         session.startActivity(with: now)
-        Task { try await builder.beginCollection(at: now) }
+        try await builder.beginCollection(at: now)
+
+        // `pause()` only works once the session is actually running; otherwise it can be ignored.
+        await waitForSessionState(.running)
+        session.pause()
+        appendWorkoutEvent(type: .pause)
+        await waitForSessionState(.paused)
+
+        timer?.invalidate()
+        timer = nil
+    }
+
+    /// Resume the HealthKit session when the user enters an exercise timer screen.
+    func resumeWorkout() async {
+        guard let session else { return }
+        refreshSessionStateFromSession()
+        if sessionState == .running {
+            startElapsedTimerIfRunning()
+            return
+        }
+        if sessionState == .paused {
+            session.resume()
+            appendWorkoutEvent(type: .resume)
+            await waitForSessionState(.running)
+        }
+        startElapsedTimerIfRunning()
+    }
+
+    /// Pause the HealthKit session when the user returns to the exercise list (finished or cancelled a set).
+    func pauseWorkout() async {
+        guard let session else { return }
+        timer?.invalidate()
+        timer = nil
+
+        refreshSessionStateFromSession()
+        if sessionState == .paused { return }
+        if sessionState == .running {
+            session.pause()
+            appendWorkoutEvent(type: .pause)
+            await waitForSessionState(.paused)
+        }
+    }
+
+    private func startElapsedTimerIfRunning() {
+        timer?.invalidate()
+        timer = nil
+        refreshSessionStateFromSession()
+        guard sessionState == .running, let start = startDate else { return }
 
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             guard let self else { return }
@@ -51,6 +139,12 @@ final class LiveWorkoutManager: NSObject, ObservableObject {
         isRunning = false
 
         let end = Date()
+        refreshSessionStateFromSession()
+        if let session, sessionState == .paused {
+            session.resume()
+            appendWorkoutEvent(type: .resume)
+            await waitForSessionState(.running)
+        }
         session?.end()
         try await builder?.endCollection(at: end)
         try await builder?.finishWorkout()
@@ -65,6 +159,12 @@ final class LiveWorkoutManager: NSObject, ObservableObject {
         isRunning = false
 
         let end = Date()
+        refreshSessionStateFromSession()
+        if let session, sessionState == .paused {
+            session.resume()
+            appendWorkoutEvent(type: .resume)
+            await waitForSessionState(.running)
+        }
         session?.end()
         try await builder?.endCollection(at: end)
         // Do not call finishWorkout() — workout is not written to HealthKit
@@ -107,7 +207,11 @@ extension LiveWorkoutManager: HKWorkoutSessionDelegate {
         didChangeTo toState: HKWorkoutSessionState,
         from fromState: HKWorkoutSessionState,
         date: Date
-    ) {}
+    ) {
+        Task { @MainActor in
+            self.sessionState = toState
+        }
+    }
 
     nonisolated func workoutSession(
         _ session: HKWorkoutSession,

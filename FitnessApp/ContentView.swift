@@ -485,6 +485,32 @@ private struct RoutineScreen: View {
     }
 }
 
+/// Shown on Activity (home) when a finished Track session is waiting to merge with an Apple Health workout.
+private struct PendingAppleHealthSyncSection: View {
+    @EnvironmentObject private var store: AppStore
+
+    var body: some View {
+        Group {
+            if !store.pendingTrackedWorkouts.isEmpty {
+                SectionTitle(title: "Waiting For Apple Health")
+                VStack(spacing: 10) {
+                    ForEach(store.pendingTrackedWorkouts.prefix(3)) { pendingWorkout in
+                        AppCard {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(pendingWorkout.healthSyncStatusLine)
+                                    .font(.headline)
+                                Text("\(pendingWorkout.exerciseDetails.count) checked exercises will attach when the matching Apple Health workout appears.")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 private struct ActivityScreen: View {
     @EnvironmentObject private var store: AppStore
     @State private var hasScrolledToToday = false
@@ -498,6 +524,8 @@ private struct ActivityScreen: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 16) {
+                            PendingAppleHealthSyncSection()
+
                             SectionTitle(title: "Upcoming")
                             if upcomingWorkoutDayGroups.isEmpty {
                                 AppCard {
@@ -1004,22 +1032,34 @@ private struct ActivityScreen: View {
     }
 }
 
+/// Drives Track setup sheet via `.sheet(item:)` so the sheet always has a defined activity type (avoids blank first presentation).
+private struct TrackSetupSheetItem: Identifiable {
+    let id = UUID()
+    let activityType: String
+}
+
+/// Drives the exercise timer sheet so title / notes / instructions are captured when the user taps (avoids stale `.sheet(isPresented:)` state).
+private struct TrackExerciseTimerSheetItem: Identifiable {
+    let id = UUID()
+    let trackedExerciseStateId: UUID
+    let title: String
+    let instructions: String
+    let exerciseDb: ExerciseDbCatalogEntry?
+}
+
 private struct TrackScreen: View {
     @EnvironmentObject private var store: AppStore
     @EnvironmentObject private var healthSyncController: HealthSyncController
     @State private var selectedLocationID: UUID?
     @State private var selectedDurationMinutes = 20
-    @State private var setupActivityType: String?
     @State private var setupSelectedBodyParts: Set<ExerciseBodyArea> = []
-    @State private var isShowingSetupSheet = false
+    @State private var trackSetupSheetItem: TrackSetupSheetItem?
     @State private var isShowingOtherExerciseSheet = false
     @State private var isShowingFinishSheet = false
     @State private var isShowingDiscardAlert = false
     @State private var finishMessage = ""
     @State private var isShowingFinishMessage = false
-    @State private var isShowingExerciseTimer = false
-    @State private var activeExerciseID: UUID?
-    @State private var activeExerciseTitle: String = ""
+    @State private var exerciseTimerSheetItem: TrackExerciseTimerSheetItem?
 
     var body: some View {
         NavigationStack {
@@ -1053,10 +1093,17 @@ private struct TrackScreen: View {
                     } else {
                         VStack(spacing: 10) {
                             ForEach(trackedSession.exercises) { exercise in
-                                TrackExerciseRow(exercise: exercise) {
-                                    activeExerciseID = exercise.id
-                                    activeExerciseTitle = exercise.plannedExercise.title
-                                    isShowingExerciseTimer = true
+                                TrackExerciseRow(
+                                    exercise: exercise,
+                                    libraryExercise: resolvedLibraryExercise(for: exercise)
+                                ) {
+                                    let lib = resolvedLibraryExercise(for: exercise)
+                                    exerciseTimerSheetItem = TrackExerciseTimerSheetItem(
+                                        trackedExerciseStateId: exercise.id,
+                                        title: lib?.name ?? exercise.plannedExercise.title,
+                                        instructions: lib?.instructions ?? "",
+                                        exerciseDb: lib?.exerciseDb
+                                    )
                                 }
                             }
 
@@ -1095,7 +1142,11 @@ private struct TrackScreen: View {
                         }
                     }
                 } else {
-                    SectionTitle(title: "Track")
+                    Text("Select an Activity to start training.")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.bottom, 4)
                     VStack(spacing: 12) {
                         Button {
                             prepareSetup(for: "Traditional Strength Training")
@@ -1151,26 +1202,15 @@ private struct TrackScreen: View {
                         }
                         .buttonStyle(.plain)
                     }
-                }
 
-                if !store.pendingTrackedWorkouts.isEmpty {
-                    SectionTitle(title: "Waiting For Apple Health")
-                    VStack(spacing: 10) {
-                        ForEach(store.pendingTrackedWorkouts.prefix(3)) { pendingWorkout in
-                            AppCard {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text(pendingWorkout.summary)
-                                        .font(.headline)
-                                    Text("\(pendingWorkout.durationMinutes) min at \(pendingWorkout.locationName)")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                    Text("\(pendingWorkout.exerciseDetails.count) checked exercises will attach when the matching Apple Health workout appears.")
-                                        .font(.footnote)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Training Day will automatically suggest exercises for you to do during the workout based on your previous activity.")
+                        Text("You can always tap on Other to select a different exercise from the ones that were recommended.")
                     }
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 16)
                 }
             }
             .navigationTitle("Track")
@@ -1244,69 +1284,60 @@ private struct TrackScreen: View {
             } message: {
                 Text("This will discard the current Track checklist without saving it.")
             }
-            .sheet(isPresented: $isShowingExerciseTimer) {
+            .sheet(item: $exerciseTimerSheetItem) { item in
                 TrackExerciseTimerView(
-                    title: activeExerciseTitle,
-                    instructions: store.exerciseLibrary.first { lib in
-                        lib.name.trimmingCharacters(in: .whitespacesAndNewlines)
-                            .caseInsensitiveCompare(activeExerciseTitle.trimmingCharacters(in: .whitespacesAndNewlines)) == .orderedSame
-                    }?.instructions ?? "",
+                    title: item.title,
+                    instructions: item.instructions,
+                    exerciseDb: item.exerciseDb,
                     onComplete: { elapsed in
-                        if let id = activeExerciseID {
-                            store.completeTrackedExercise(id: id, durationSeconds: elapsed)
-                            store.persist()
-                        }
-                        isShowingExerciseTimer = false
+                        store.completeTrackedExercise(id: item.trackedExerciseStateId, durationSeconds: elapsed)
+                        store.persist()
+                        exerciseTimerSheetItem = nil
                     },
                     onCancel: {
-                        isShowingExerciseTimer = false
+                        exerciseTimerSheetItem = nil
                     }
                 )
             }
-            .sheet(isPresented: $isShowingSetupSheet) {
-                Group {
-                    if let activityType = setupActivityType {
-                        TrackSetupSheet(
-                            activityType: activityType,
-                            selectedBodyParts: $setupSelectedBodyParts,
-                            selectedLocationID: $selectedLocationID,
-                            selectedDurationMinutes: $selectedDurationMinutes,
-                            locations: store.locations,
-                            allowedBodyParts: allowedTrainingBodyAreas(for: activityType),
-                            onCancel: {
-                                isShowingSetupSheet = false
-                            },
-                            onStart: {
-                                let normalized = activityType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                                if normalized == "flexibility" {
-                                    let stretches = store.recommendedStretches(durationMinutes: selectedDurationMinutes, focusAreas: Array(setupSelectedBodyParts))
-                                    guard !stretches.isEmpty else { return }
-                                    _ = store.startTrackedWorkout(
-                                        activityType: "Flexibility",
-                                        stretches: stretches,
-                                        targetDate: .now,
-                                        locationID: selectedLocationID,
-                                        durationMinutes: selectedDurationMinutes
-                                    )
-                                } else {
-                                    let focusAreas = Array(setupSelectedBodyParts)
-                                    guard !focusAreas.isEmpty else { return }
-                                    _ = store.startTrackedWorkout(
-                                        activityType: activityType,
-                                        focusAreas: focusAreas,
-                                        targetDate: .now,
-                                        locationID: selectedLocationID,
-                                        durationMinutes: selectedDurationMinutes
-                                    )
-                                }
-                                store.persist()
-                                isShowingSetupSheet = false
-                            }
-                        )
-                    } else {
-                        EmptyView()
+            .sheet(item: $trackSetupSheetItem) { item in
+                TrackSetupSheet(
+                    activityType: item.activityType,
+                    selectedBodyParts: $setupSelectedBodyParts,
+                    selectedLocationID: $selectedLocationID,
+                    selectedDurationMinutes: $selectedDurationMinutes,
+                    locations: store.locations,
+                    allowedBodyParts: allowedTrainingBodyAreas(for: item.activityType),
+                    onCancel: {
+                        trackSetupSheetItem = nil
+                    },
+                    onStart: {
+                        let activityType = item.activityType
+                        let normalized = activityType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                        if normalized == "flexibility" {
+                            let stretches = store.recommendedStretches(durationMinutes: selectedDurationMinutes, focusAreas: Array(setupSelectedBodyParts))
+                            guard !stretches.isEmpty else { return }
+                            _ = store.startTrackedWorkout(
+                                activityType: "Flexibility",
+                                stretches: stretches,
+                                targetDate: .now,
+                                locationID: selectedLocationID,
+                                durationMinutes: selectedDurationMinutes
+                            )
+                        } else {
+                            let focusAreas = Array(setupSelectedBodyParts)
+                            guard !focusAreas.isEmpty else { return }
+                            _ = store.startTrackedWorkout(
+                                activityType: activityType,
+                                focusAreas: focusAreas,
+                                targetDate: .now,
+                                locationID: selectedLocationID,
+                                durationMinutes: selectedDurationMinutes
+                            )
+                        }
+                        store.persist()
+                        trackSetupSheetItem = nil
                     }
-                }
+                )
             }
         }
     }
@@ -1315,8 +1346,21 @@ private struct TrackScreen: View {
         store.trackedWorkoutSession
     }
 
+    /// Match catalog metadata: `PlannedExercise.id` matches library id for Flexibility stretches; strength/core plans use a new id per suggestion, so fall back to title.
+    private func resolvedLibraryExercise(for tracked: TrackedExerciseState) -> ExerciseLibraryItem? {
+        let plan = tracked.plannedExercise
+        if let byPlanId = store.exerciseLibrary.first(where: { $0.id == plan.id }) {
+            return byPlanId
+        }
+        let normalizedTitle = plan.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedTitle.isEmpty else { return nil }
+        return store.exerciseLibrary.first { item in
+            item.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                .caseInsensitiveCompare(normalizedTitle) == .orderedSame
+        }
+    }
+
     private func prepareSetup(for activityType: String) {
-        setupActivityType = activityType
         let normalized = activityType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let allowedAreas = allowedTrainingBodyAreas(for: activityType)
 
@@ -1338,9 +1382,23 @@ private struct TrackScreen: View {
             setupSelectedBodyParts = Set(AppStore.flexibilityBodyAreas)
         }
 
-        selectedLocationID = selectedLocationID ?? store.defaultLocation?.id ?? store.locations.first?.id
+        selectedLocationID = resolvedDefaultLocationID(for: store)
         selectedDurationMinutes = max(selectedDurationMinutes, 5)
-        isShowingSetupSheet = true
+        trackSetupSheetItem = TrackSetupSheetItem(activityType: activityType)
+    }
+
+    /// Prefer current selection if still valid; otherwise default location or first in list (so the picker is never blank).
+    private func resolvedDefaultLocationID(for store: AppStore) -> UUID? {
+        let candidates: [UUID?] = [
+            selectedLocationID,
+            store.defaultLocation?.id,
+            store.locations.first?.id
+        ]
+        for candidate in candidates {
+            guard let id = candidate, store.locations.contains(where: { $0.id == id }) else { continue }
+            return id
+        }
+        return store.locations.first?.id
     }
 
     private func trainingTemplate(for activityType: String) -> RoutineActivity? {
@@ -1431,18 +1489,50 @@ private struct TrackSetupSheet: View {
 
                     SectionTitle(title: "Location & Duration")
                     AppCard {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Picker("Location", selection: $selectedLocationID) {
-                                ForEach(locations) { location in
-                                    Text(location.name).tag(Optional(location.id))
-                                }
-                            }
+                        VStack(alignment: .leading, spacing: 16) {
+                            if locations.isEmpty {
+                                Text("Add a location in Settings to tag this session.")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                HStack(alignment: .center, spacing: 12) {
+                                    Text("Location")
+                                        .font(.subheadline.weight(.medium))
+                                        .foregroundStyle(.primary)
+                                        .frame(width: 88, alignment: .leading)
 
-                            Picker("Duration", selection: $selectedDurationMinutes) {
-                                ForEach([10, 15, 20, 30, 45], id: \.self) { minutes in
-                                    Text("\(minutes) min").tag(minutes)
+                                    Picker("Location", selection: $selectedLocationID) {
+                                        ForEach(locations) { location in
+                                            Text(location.name).tag(Optional(location.id))
+                                        }
+                                    }
+                                    .labelsHidden()
+                                    .pickerStyle(.menu)
+                                    .frame(maxWidth: .infinity, alignment: .trailing)
+                                }
+
+                                HStack(alignment: .center, spacing: 12) {
+                                    Text("Duration")
+                                        .font(.subheadline.weight(.medium))
+                                        .foregroundStyle(.primary)
+                                        .frame(width: 88, alignment: .leading)
+
+                                    Picker("Duration", selection: $selectedDurationMinutes) {
+                                        ForEach([10, 15, 20, 30, 45], id: \.self) { minutes in
+                                            Text("\(minutes) min").tag(minutes)
+                                        }
+                                    }
+                                    .labelsHidden()
+                                    .pickerStyle(.menu)
+                                    .frame(maxWidth: .infinity, alignment: .trailing)
                                 }
                             }
+                        }
+                    }
+                    .onAppear {
+                        guard !locations.isEmpty else { return }
+                        if selectedLocationID == nil || !locations.contains(where: { $0.id == selectedLocationID }) {
+                            selectedLocationID = locations.first?.id
                         }
                     }
 
@@ -1464,38 +1554,52 @@ private struct TrackSetupSheet: View {
 private struct TrackExerciseTimerView: View {
     let title: String
     let instructions: String
+    let exerciseDb: ExerciseDbCatalogEntry?
     let onComplete: (TimeInterval) -> Void
     let onCancel: () -> Void
 
     @State private var startDate = Date()
+    @State private var showHowTo = false
+
+    private var trimmedInstructions: String {
+        instructions.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var gifURL: URL? {
+        guard let s = exerciseDb?.gifURL?.trimmingCharacters(in: .whitespacesAndNewlines), !s.isEmpty else {
+            return nil
+        }
+        return URL(string: s)
+    }
+
+    /// Content revealed by “Show me how to do this exercise” (demo animation and steps).
+    private var hasHowToContent: Bool {
+        gifURL != nil || !trimmedInstructions.isEmpty
+    }
 
     var body: some View {
         NavigationStack {
             ScreenScrollContainer {
                 AppCard {
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 14) {
                         Text(title)
-                            .font(.headline)
+                            .font(.title2.weight(.semibold))
+                            .fixedSize(horizontal: false, vertical: true)
 
-                        if !instructions.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            Text(instructions)
-                                .font(.subheadline)
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Elapsed Time")
+                                .font(.caption)
                                 .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
 
-                        Text("Elapsed Time")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-
-                        TimelineView(.periodic(from: startDate, by: 0.1)) { context in
-                            let elapsed = context.date.timeIntervalSince(startDate)
-                            Text(formattedElapsedTime(from: elapsed))
-                                .font(.system(size: 42, weight: .bold, design: .monospaced))
-                                .frame(maxWidth: .infinity, alignment: .center)
+                            TimelineView(.periodic(from: startDate, by: 0.1)) { context in
+                                let elapsed = context.date.timeIntervalSince(startDate)
+                                Text(formattedElapsedTime(from: elapsed))
+                                    .font(.system(size: 42, weight: .bold, design: .monospaced))
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
 
                         HStack(spacing: 12) {
                             WideActionButton(title: "Cancel", tint: .gray) {
@@ -1504,6 +1608,69 @@ private struct TrackExerciseTimerView: View {
                             WideActionButton(title: "Complete", tint: .green) {
                                 let elapsed = Date().timeIntervalSince(startDate)
                                 onComplete(elapsed)
+                            }
+                        }
+
+                        if hasHowToContent {
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.22)) {
+                                    showHowTo.toggle()
+                                }
+                            } label: {
+                                HStack(alignment: .center, spacing: 10) {
+                                    Text("Show me how to do this exercise")
+                                        .font(.subheadline.weight(.semibold))
+                                        .multilineTextAlignment(.leading)
+                                        .foregroundStyle(.primary)
+                                    Spacer(minLength: 0)
+                                    Image(systemName: "chevron.down")
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(.secondary)
+                                        .rotationEffect(.degrees(showHowTo ? 180 : 0))
+                                }
+                                .padding(.vertical, 4)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Show me how to do this exercise")
+                            .accessibilityHint(showHowTo ? "Hides demo and instructions" : "Shows demo animation and instructions")
+
+                            if showHowTo {
+                                VStack(alignment: .leading, spacing: 14) {
+                                    if let gifURL {
+                                        AsyncImage(url: gifURL) { phase in
+                                            switch phase {
+                                            case let .success(image):
+                                                image
+                                                    .resizable()
+                                                    .scaledToFit()
+                                                    .frame(maxWidth: .infinity)
+                                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                            case .failure:
+                                                Label("Could not load demo animation", systemImage: "photo")
+                                                    .font(.footnote)
+                                                    .foregroundStyle(.secondary)
+                                            case .empty:
+                                                ProgressView()
+                                                    .frame(maxWidth: .infinity)
+                                                    .padding(.vertical, 24)
+                                            @unknown default:
+                                                EmptyView()
+                                            }
+                                        }
+                                    }
+
+                                    if !trimmedInstructions.isEmpty {
+                                        Text("Instructions")
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(.secondary)
+                                        Text(trimmedInstructions)
+                                            .font(.body)
+                                            .foregroundStyle(.primary)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                }
+                                .padding(.top, 2)
                             }
                         }
                     }
@@ -2126,9 +2293,113 @@ private struct SessionStyleActivityCard: View {
     }
 }
 
+/// Wraps subviews at intrinsic width (avoids squeezing chip labels onto multiple lines).
+private struct MusclePillFlowLayout: Layout {
+    var spacing: CGFloat = 6
+    var rowSpacing: CGFloat = 6
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        layout(in: proposal, subviews: subviews).size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let result = layout(in: proposal, subviews: subviews)
+        for (index, subview) in subviews.enumerated() {
+            let frame = result.frames[index]
+            subview.place(
+                at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY),
+                anchor: .topLeading,
+                proposal: ProposedViewSize(frame.size)
+            )
+        }
+    }
+
+    private func layout(in proposal: ProposedViewSize, subviews: Subviews) -> (frames: [CGRect], size: CGSize) {
+        let maxWidth = proposal.width ?? .infinity
+        var frames: [CGRect] = []
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x + size.width > maxWidth, x > 0 {
+                x = 0
+                y += rowHeight + rowSpacing
+                rowHeight = 0
+            }
+            frames.append(CGRect(origin: CGPoint(x: x, y: y), size: size))
+            rowHeight = max(rowHeight, size.height)
+            x += size.width + spacing
+        }
+
+        let height = y + rowHeight
+        let width = frames.map(\.maxX).max() ?? 0
+        return (frames, CGSize(width: width, height: height))
+    }
+}
+
+private struct TrackMusclePill: View {
+    let title: String
+    let isPrimary: Bool
+
+    var body: some View {
+        let tint: Color = isPrimary ? .green : .blue
+        Text(title)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(tint)
+            .lineLimit(1)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(tint.opacity(0.18), in: Capsule())
+            .fixedSize(horizontal: true, vertical: false)
+    }
+}
+
 private struct TrackExerciseRow: View {
     let exercise: TrackedExerciseState
+    let libraryExercise: ExerciseLibraryItem?
     let onToggle: () -> Void
+
+    private var aboutLine: String? {
+        let fromNotes = libraryExercise?.notes
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if let fromNotes, !fromNotes.isEmpty {
+            return fromNotes
+        }
+        let reason = exercise.plannedExercise.reason
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return reason.isEmpty ? nil : reason
+    }
+
+    /// Primary = green, secondary = blue. Uses ExerciseDB target vs secondary when matched; otherwise catalog `primaryMuscles` are all primary.
+    private var musclePills: [(area: ExerciseBodyArea, isPrimary: Bool)] {
+        guard let lib = libraryExercise else { return [] }
+        if let db = lib.exerciseDb, db.matched {
+            var greens: [ExerciseBodyArea] = []
+            var seenGreen = Set<ExerciseBodyArea>()
+            for raw in db.targetMuscles {
+                guard let a = ExerciseBodyArea.fromLegacy(raw), seenGreen.insert(a).inserted else { continue }
+                greens.append(a)
+            }
+            if greens.isEmpty {
+                for a in lib.primaryMuscles where seenGreen.insert(a).inserted {
+                    greens.append(a)
+                }
+            }
+            let greenSet = Set(greens)
+            var seenBlue = greenSet
+            var blues: [ExerciseBodyArea] = []
+            for raw in db.secondaryMuscles {
+                guard let a = ExerciseBodyArea.fromLegacy(raw), seenBlue.insert(a).inserted else { continue }
+                blues.append(a)
+            }
+            if !greens.isEmpty || !blues.isEmpty {
+                return greens.map { ($0, true) } + blues.map { ($0, false) }
+            }
+        }
+        return lib.primaryMuscles.map { ($0, true) }
+    }
 
     var body: some View {
         Button(action: onToggle) {
@@ -2142,10 +2413,20 @@ private struct TrackExerciseRow: View {
                         Text(exercise.plannedExercise.title)
                             .font(.headline)
                             .multilineTextAlignment(.leading)
-                        Text(exercise.plannedExercise.reason)
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.leading)
+                        if let aboutLine {
+                            Text(aboutLine)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.leading)
+                        }
+                        if !musclePills.isEmpty {
+                            MusclePillFlowLayout(spacing: 6, rowSpacing: 6) {
+                                ForEach(Array(musclePills.enumerated()), id: \.offset) { _, pill in
+                                    TrackMusclePill(title: pill.area.title, isPrimary: pill.isPrimary)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     }
 
                     Spacer(minLength: 0)
@@ -3885,6 +4166,8 @@ private struct ExerciseEditorView: View {
                             isUnilateral: isUnilateral,
                             notes: notes.trimmingCharacters(in: .whitespacesAndNewlines),
                             instructions: instructions.trimmingCharacters(in: .whitespacesAndNewlines),
+                            catalogSlug: initialExercise?.catalogSlug,
+                            exerciseDb: initialExercise?.exerciseDb,
                             source: initialExercise?.source ?? .custom
                         )
                         onSave(exercise)

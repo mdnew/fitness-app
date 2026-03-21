@@ -24,3 +24,6 @@ xcuserdata/
 ios/Pods/
 android/.gradle/
 android/app/build/
+
+# Generated ExerciseDB assets (re-run Scripts/exercisedb-integration/fetch-exercise-gifs.js)
+Scripts/exercisedb-integration/exercise-gifs/**/*.gif

@@ -149,22 +149,27 @@ enum ExerciseBodyArea: String, CaseIterable, Codable, Identifiable {
             .lowercased()
             .replacingOccurrences(of: "-", with: " ")
         {
-        case "chest":
+        case "chest", "pectorals", "upper chest":
             .chest
-        case "back", "upper back", "mid back", "lats", "rear delts", "traps", "grip":
+        case "back", "upper back", "mid back", "lower back", "lats", "rear delts", "rear deltoids", "rhomboids",
+             "traps", "trapezius", "grip":
             .back
-        case "shoulders", "delts":
+        case "shoulders", "delts", "deltoids":
             .shoulders
         case "biceps":
             .biceps
         case "triceps":
             .triceps
-        case "legs", "lower body", "quads", "hamstrings", "calves", "single leg":
+        case "legs", "lower body", "quads", "quadriceps", "hamstrings", "calves", "single leg":
             .legs
         case "glutes":
             .glutes
         case "abs", "core", "obliques", "hip flexors":
             .abs
+        case "levator scapulae":
+            .shoulders
+        case "cardiovascular system", "sternocleidomastoid", "forearms":
+            nil
         default:
             nil
         }
@@ -433,6 +438,10 @@ struct ExerciseLibraryItem: Identifiable, Hashable, Codable {
     var isUnilateral: Bool
     var notes: String
     var instructions: String
+    /// Stable id aligned with `exercise-mapping.json` / `exercise-db-catalog.json` (`app_id`). Nil for custom exercises.
+    var catalogSlug: String?
+    /// ExerciseDB-backed metadata (GIF URL, muscles, equipment, steps). Nil when unmatched or custom.
+    var exerciseDb: ExerciseDbCatalogEntry?
     var source: ExerciseLibrarySourceKind
 
     init(
@@ -446,6 +455,8 @@ struct ExerciseLibraryItem: Identifiable, Hashable, Codable {
         isUnilateral: Bool,
         notes: String,
         instructions: String = "",
+        catalogSlug: String? = nil,
+        exerciseDb: ExerciseDbCatalogEntry? = nil,
         source: ExerciseLibrarySourceKind
     ) {
         self.id = id
@@ -458,6 +469,8 @@ struct ExerciseLibraryItem: Identifiable, Hashable, Codable {
         self.isUnilateral = isUnilateral
         self.notes = notes
         self.instructions = instructions
+        self.catalogSlug = catalogSlug
+        self.exerciseDb = exerciseDb
         self.source = source
     }
 
@@ -478,7 +491,25 @@ struct ExerciseLibraryItem: Identifiable, Hashable, Codable {
         isUnilateral = try container.decode(Bool.self, forKey: .isUnilateral)
         notes = try container.decode(String.self, forKey: .notes)
         instructions = try container.decodeIfPresent(String.self, forKey: .instructions) ?? ""
+        catalogSlug = try container.decodeIfPresent(String.self, forKey: .catalogSlug)
+        exerciseDb = try container.decodeIfPresent(ExerciseDbCatalogEntry.self, forKey: .exerciseDb)
         source = try container.decodeIfPresent(ExerciseLibrarySourceKind.self, forKey: .source) ?? .seeded
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case movementPattern
+        case requiredEquipment
+        case primaryMuscles
+        case goalSupportTags
+        case skillLevel
+        case isUnilateral
+        case notes
+        case instructions
+        case catalogSlug
+        case exerciseDb
+        case source
     }
 }
 
@@ -577,6 +608,25 @@ struct PendingTrackedWorkoutMerge: Identifiable, Hashable, Codable {
     var activityType: String
     var summary: String
     var exerciseDetails: [CompletedExerciseDetail]
+
+    /// Shown while waiting for the matching Apple Health workout, e.g. "20 min Traditional Strength Training at Home".
+    var healthSyncStatusLine: String {
+        let trimmedLocation = locationName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let locationPart = trimmedLocation.isEmpty ? "No location" : trimmedLocation
+
+        let trimmedActivity = activityType.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedSummary = summary.trimmingCharacters(in: .whitespacesAndNewlines)
+        let activityPart: String
+        if !trimmedActivity.isEmpty {
+            activityPart = trimmedActivity
+        } else if !trimmedSummary.isEmpty {
+            activityPart = trimmedSummary
+        } else {
+            activityPart = "Workout"
+        }
+
+        return "\(durationMinutes) min \(activityPart) at \(locationPart)"
+    }
 }
 
 struct CompletedExerciseDetail: Identifiable, Hashable, Codable {
@@ -767,6 +817,12 @@ final class AppStore: ObservableObject {
 
     /// Body areas that have stretches in the catalog (used for Flexibility target body parts).
     static let flexibilityBodyAreas: [ExerciseBodyArea] = [.legs, .glutes, .back, .shoulders, .chest, .triceps, .abs]
+
+    /// Title shown on Track while logging (same as activity type: Traditional Strength Training, Core Training, Flexibility).
+    static func trackSessionDisplayTitle(activityType: String) -> String {
+        let trimmed = activityType.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Traditional Strength Training" : trimmed
+    }
 
     /// Generated stretch list for a Flexibility session based on duration and optional focus areas.
     func recommendedStretches(durationMinutes: Int, focusAreas: [ExerciseBodyArea] = []) -> [ExerciseLibraryItem] {
@@ -992,82 +1048,82 @@ final class AppStore: ObservableObject {
 
     private static func defaultExerciseLibrary() -> [ExerciseLibraryItem] {
         [
-            exercise("Goblet Squat", .squat, [.dumbbells], [.legs, .glutes, .abs], ["running", "hiking", "skiing"], .beginner, false, "Simple lower-body squat pattern that fits most gyms and home setups.", "Hold one dumbbell at your chest, sit your hips down and back, then stand tall through your whole foot."),
-            exercise("Back Squat", .squat, [.barbell], [.legs, .glutes], ["running", "cycling", "field sports"], .intermediate, false, "Classic bilateral lower-body strength builder.", "Set the bar on your upper back, brace your core, squat to comfortable depth, then drive back up."),
-            exercise("Step-Up", .singleLeg, [.dumbbells, .bench], [.legs, .glutes], ["running", "hiking", "skiing"], .beginner, true, "Low-complexity single-leg option with clear carryover to climbing and hiking.", "Step onto the bench with one foot, drive through that leg to stand, then return under control."),
-            exercise("Reverse Lunge", .singleLeg, [.dumbbells], [.legs, .glutes], ["running", "court sports", "surfing"], .beginner, true, "Accessible unilateral lower-body work.", "Step one leg backward, lower both knees, then push through the front foot to return to standing."),
-            exercise("Regular Lunge", .singleLeg, [.dumbbells], [.legs, .glutes], ["running", "court sports", "hiking", "surfing"], .beginner, true, "Forward lunge for unilateral lower-body strength and balance.", "Step one leg forward, lower your back knee toward the floor while keeping your front knee over your ankle, then push through the front foot to return to standing."),
-            exercise("Hip Thrust", .hinge, [.barbell, .bench], [.glutes, .legs], ["running", "cycling", "surfing"], .intermediate, false, "Glute-focused bridge pattern.", "Rest your upper back on a bench, drive your hips up until your torso is level, then lower slowly."),
-            exercise("Leg Curl", .hinge, [.machine], [.legs], ["running", "field sports"], .beginner, false, "Simple machine posterior-chain accessory.", "Set the pad above your heels, curl your heels toward you, pause, then return with control."),
-            exercise("Leg Press", .squat, [.machine], [.legs, .glutes], ["running", "cycling", "field sports"], .beginner, false, "Machine-based leg press for quad and glute strength without spinal loading.", "Sit with your back against the pad, feet on the platform. Press through your whole foot to extend your legs, then lower with control."),
-            exercise("Leg Extension", .squat, [.machine], [.legs], ["running", "field sports"], .beginner, false, "Machine quad isolation for knee extension.", "Sit with the pad against your ankles, extend your legs until straight, squeeze at the top, then lower with control."),
-            exercise("Push-Up", .horizontalPush, [.bodyweight], [.chest, .triceps, .shoulders], ["general", "surfing"], .beginner, false, "Scalable upper-body push that works almost anywhere.", "Start in a straight plank, lower your chest toward the floor, then press back up without sagging."),
-            exercise("Flat Barbell Bench Press", .horizontalPush, [.barbell, .bench], [.chest, .triceps, .shoulders], ["general", "surfing"], .beginner, false, "Standard flat barbell press for chest and triceps strength.", "Lower the bar to mid-chest with control, keep your shoulders set, then press straight up."),
-            exercise("Incline Barbell Bench Press", .horizontalPush, [.barbell, .bench], [.chest, .shoulders, .triceps], ["general", "surfing"], .intermediate, false, "Upper-chest pressing variation using a barbell.", "Use an incline bench, lower the bar to your upper chest, then press it back above your shoulders."),
-            exercise("Decline Barbell Bench Press", .horizontalPush, [.barbell, .bench], [.chest, .triceps], ["general"], .intermediate, false, "Lower-angle bench press variation using a barbell.", "Secure your legs, lower the bar to your lower chest, then press it back up with steady control."),
-            exercise("Flat Dumbbell Bench Press", .horizontalPush, [.dumbbells, .bench], [.chest, .triceps], ["general", "surfing"], .beginner, false, "Simple flat dumbbell press option for most gyms.", "Start with dumbbells over your chest, lower until your elbows are just below the bench, then press up."),
-            exercise("Incline Dumbbell Bench Press", .horizontalPush, [.dumbbells, .bench], [.chest, .shoulders, .triceps], ["general", "surfing"], .beginner, false, "Upper-chest dumbbell pressing variation.", "Use an incline bench, lower the dumbbells beside your upper chest, then press them up together."),
-            exercise("Decline Dumbbell Bench Press", .horizontalPush, [.dumbbells, .bench], [.chest, .triceps], ["general"], .intermediate, false, "Decline dumbbell press for chest and triceps.", "On a decline bench, lower the dumbbells with control and press them back up over your chest."),
-            exercise("Cable Chest Press", .horizontalPush, [.cable], [.chest, .triceps], ["general"], .beginner, false, "Stable pressing alternative when free weights are limited.", "Stand in a split stance, press the handles forward until your arms extend, then return slowly."),
-            exercise("Cable Crossover", .horizontalPush, [.cable], [.chest, .shoulders], ["general"], .beginner, false, "Cable fly variation for chest isolation.", "With a slight bend in your elbows, bring the handles together in front of your chest, then open back up."),
-            exercise("Machine Chest Fly", .horizontalPush, [.machine], [.chest], ["general"], .beginner, false, "Simple machine-based chest fly.", "Keep your chest up, bring the arms together in front of you, then return until you feel a stretch."),
-            exercise("Machine Reverse Fly", .horizontalPull, [.machine], [.back, .shoulders], ["swimming", "surfing", "general"], .beginner, false, "Simple machine-based rear-delt and upper-back exercise.", "Sit tall, pull the machine arms out and back, squeeze your shoulder blades, then return slowly."),
-            exercise("Single-Arm Dumbbell Row", .horizontalPull, [.dumbbells, .bench], [.back], ["running", "surfing", "general"], .beginner, true, "Easy horizontal pull that fits almost any program.", "Support yourself on a bench, row the dumbbell toward your hip, then lower it fully."),
-            exercise("Machine Row", .horizontalPull, [.machine], [.back], ["surfing", "swimming", "general"], .beginner, false, "Simple machine-based row for upper-back strength.", "Sit tall against the pad, pull the handles toward your torso, squeeze your back, then return slowly."),
-            exercise("Seated Cable Row", .horizontalPull, [.cable], [.back], ["surfing", "general"], .beginner, false, "Low-skill row with controllable loading.", "Sit tall, pull the handle toward your lower ribs, squeeze your back, then extend your arms again."),
-            exercise("Chest-Supported Row", .horizontalPull, [.dumbbells, .bench], [.back], ["surfing", "general"], .beginner, false, "Pulling volume without much lower-back fatigue.", "Lie chest-down on an incline bench, row the weights to your sides, then lower under control."),
-            exercise("Face Pull", .horizontalPull, [.cable], [.back, .shoulders], ["swimming", "surfing", "general"], .beginner, false, "Shoulder-friendly upper-back accessory.", "Pull the rope toward your face with elbows high, then return slowly while keeping tension."),
-            exercise("Standing Overhead Press", .verticalPush, [.barbell], [.shoulders, .triceps, .abs], ["general", "surfing"], .intermediate, false, "Vertical press with trunk demand.", "Brace your core, press the bar overhead in a straight path, then lower it back to shoulder level."),
-            exercise("Shoulder Press", .verticalPush, [.machine], [.shoulders, .triceps], ["general", "surfing"], .beginner, false, "Simple machine-based shoulder press variation.", "Start with the handles at shoulder height, press overhead until your arms are straight, then lower with control."),
-            exercise("Dumbbell Shoulder Press", .verticalPush, [.dumbbells], [.shoulders, .triceps], ["general", "surfing"], .beginner, false, "Accessible vertical push alternative.", "Press the dumbbells overhead from shoulder height, finish with arms straight, then lower with control."),
-            exercise("Arnold Press", .verticalPush, [.dumbbells], [.shoulders, .triceps], ["general", "surfing"], .intermediate, false, "Rotating dumbbell shoulder press variation.", "Start with palms facing you, rotate the dumbbells as you press overhead, then reverse the motion on the way down."),
-            exercise("Dumbbell Front Raise", .verticalPush, [.dumbbells], [.shoulders], ["general", "surfing"], .beginner, false, "Simple front-delt isolation exercise with dumbbells.", "Raise the dumbbells in front of you to about shoulder height, then lower them slowly."),
-            exercise("Dumbbell Lateral Raise", .verticalPush, [.dumbbells], [.shoulders], ["general", "surfing"], .beginner, false, "Simple side-delt isolation exercise with dumbbells.", "Lift the dumbbells out to your sides to shoulder height with soft elbows, then lower slowly."),
-            exercise("Tricep Pulldown", .verticalPush, [.cable], [.triceps], ["general"], .beginner, false, "Simple cable triceps isolation exercise.", "Keep your elbows tucked by your sides, pull the handle down until your arms are straight, then return slowly."),
-            exercise("Tricep Press", .verticalPush, [.cable], [.triceps], ["general"], .beginner, false, "Simple cable triceps press or pushdown.", "Keep your elbows by your sides, press the handle down until your arms are straight, then return."),
-            exercise("Pull-Up", .verticalPull, [.pullUpBar], [.back, .biceps], ["surfing", "climbing", "general"], .intermediate, false, "High-value vertical pull for upper-body strength.", "Hang from the bar, pull your chest upward by driving your elbows down, then lower fully."),
-            exercise("Lat Pulldown", .verticalPull, [.machine], [.back, .biceps], ["surfing", "swimming", "general"], .beginner, false, "Simple substitute for pull-ups when needed.", "Pull the bar to your upper chest while keeping your torso tall, then let it rise back up slowly."),
-            exercise("Dumbbell Curl", .verticalPull, [.dumbbells], [.biceps], ["general"], .beginner, false, "Simple dumbbell biceps curl variation.", "Keep your elbows near your sides, curl the dumbbells up, then lower them without swinging."),
-            exercise("Preacher Bar Curl", .verticalPull, [.barbell, .bench], [.biceps], ["general"], .beginner, false, "Supported curling variation for biceps.", "Rest your upper arms on the pad, curl the bar up smoothly, then lower it to full extension."),
-            exercise("Dead Bug", .core, [.bodyweight], [.abs], ["running", "general"], .beginner, false, "Foundational trunk-control pattern.", "Keep your low back pressed down, extend opposite arm and leg, then return and switch sides."),
-            exercise("Side Plank", .core, [.bodyweight], [.abs, .glutes], ["running", "surfing", "general"], .beginner, false, "Simple anti-lateral-flexion core work.", "Prop yourself on one forearm, lift your hips into a straight line, and hold steady."),
-            exercise("Cable Crunch", .core, [.cable], [.abs], ["general"], .beginner, false, "Simple cable-based abdominal exercise.", "Kneel at the cable, curl your ribs toward your hips, then return without losing control."),
-            exercise("Machine Crunch", .core, [.machine], [.abs], ["general"], .beginner, false, "Abdominal crunch on a crunch machine for controlled resistance.", "Sit in the machine with the pad against your chest. Curl your torso forward, bringing your ribs toward your hips, then return with control."),
-            exercise("Medicine Ball Situp to Twist", .core, [.medicineBall], [.abs], ["general"], .beginner, false, "Sit-up with rotation, holding a medicine ball.", "Lie on your back with the ball at your chest. Sit up and twist to one side, lower with control, then repeat to the other side."),
-            exercise("Medicine Ball Russian Twist", .core, [.medicineBall], [.abs], ["general"], .beginner, false, "Seated rotation with a medicine ball for obliques and core.", "Sit with knees bent, feet on the floor or lifted. Hold the ball and rotate your torso side to side, tapping the ball beside your hip each rep."),
-            exercise("Sit-up", .core, [.bodyweight], [.abs], ["running", "general"], .beginner, false, "Classic full sit-up from supine to seated.", "Lie on your back, knees bent. Curl up through your abs until you reach a seated position, then lower with control."),
-            exercise("Mountain Climbers", .core, [.bodyweight], [.abs], ["running", "general"], .beginner, false, "Dynamic plank with alternating knee drive.", "Start in a high plank. Drive one knee toward your chest, then switch legs in a running motion while keeping your hips stable."),
-            exercise("Beast Hold", .core, [.bodyweight], [.abs], ["general"], .beginner, false, "Static hold in beast position with knees off the floor.", "Start on hands and toes, knees under hips. Lift your knees an inch or two off the floor and hold a flat table-top position with a braced core."),
-            exercise("Plank", .core, [.bodyweight], [.abs], ["running", "surfing", "general"], .beginner, false, "Static anti-extension core hold.", "Hold a straight line from head to heels on your forearms or hands; keep your core braced and avoid sagging or piking."),
-            exercise("Bicycle Crunch", .core, [.bodyweight], [.abs], ["general"], .beginner, false, "Alternating elbow-to-knee crunch for abs and obliques.", "Lie on your back, hands behind your head. Bring one knee in while rotating your opposite elbow toward it, then switch sides in a pedaling motion."),
-            exercise("Hollow Hold", .core, [.bodyweight], [.abs], ["running", "general"], .intermediate, false, "Static hollow-body position for core strength.", "Lie on your back. Press your low back down, lift your shoulders and legs off the floor, and hold a curved hollow shape with arms and legs extended."),
-            exercise("Bird Dog", .core, [.bodyweight], [.abs, .glutes], ["running", "general"], .beginner, true, "Alternating arm and leg extension for core and glute stability.", "On hands and knees, extend one arm and the opposite leg until they are parallel to the floor. Hold briefly, then return and switch sides."),
-            exercise("Reverse Crunch", .core, [.bodyweight], [.abs], ["general"], .beginner, false, "Lower-ab focus by curling hips toward your ribs.", "Lie on your back, legs bent. Use your abs to curl your hips off the floor and toward your ribs, then lower with control."),
-            exercise("Glute Bridge", .hinge, [.bodyweight], [.glutes, .legs], ["running", "general"], .beginner, false, "Hip extension bridge for glute activation.", "Lie on your back, knees bent, feet flat. Drive through your heels to lift your hips until your body forms a straight line; squeeze your glutes at the top."),
-            exercise("Cable Kickback", .hinge, [.cable], [.glutes], ["general"], .beginner, true, "Single-leg hip extension at the cable for glute isolation.", "Attach an ankle strap to the cable. Stand facing the machine, extend one leg back against the resistance, then return with control."),
-            exercise("Frog Pump", .hinge, [.bodyweight], [.glutes], ["general"], .beginner, false, "Glute bridge with feet together and knees out for glute focus.", "Lie on your back with soles of your feet together and knees out. Drive through your heels to lift your hips, squeeze your glutes, then lower."),
-            exercise("Clam Shell", .core, [.bodyweight], [.glutes], ["running", "general"], .beginner, true, "Side-lying hip external rotation for glute medius.", "Lie on your side, knees bent. Keeping your feet together, lift your top knee toward the ceiling, then lower with control. Repeat on both sides."),
+            seeded("goblet-squat", "Goblet Squat", .squat, [.dumbbells], [.legs, .glutes, .abs], ["running", "hiking", "skiing"], .beginner, false, "Simple lower-body squat pattern that fits most gyms and home setups."),
+            seeded("back-squat", "Back Squat", .squat, [.barbell], [.legs, .glutes], ["running", "cycling", "field sports"], .intermediate, false, "Classic bilateral lower-body strength builder."),
+            seeded("step-up", "Step-Up", .singleLeg, [.dumbbells, .bench], [.legs, .glutes], ["running", "hiking", "skiing"], .beginner, true, "Low-complexity single-leg option with clear carryover to climbing and hiking."),
+            seeded("reverse-lunge", "Reverse Lunge", .singleLeg, [.dumbbells], [.legs, .glutes], ["running", "court sports", "surfing"], .beginner, true, "Accessible unilateral lower-body work."),
+            seeded("regular-lunge", "Regular Lunge", .singleLeg, [.dumbbells], [.legs, .glutes], ["running", "court sports", "hiking", "surfing"], .beginner, true, "Forward lunge for unilateral lower-body strength and balance."),
+            seeded("hip-thrust", "Hip Thrust", .hinge, [.barbell, .bench], [.glutes, .legs], ["running", "cycling", "surfing"], .intermediate, false, "Glute-focused bridge pattern."),
+            seeded("leg-curl", "Leg Curl", .hinge, [.machine], [.legs], ["running", "field sports"], .beginner, false, "Simple machine posterior-chain accessory."),
+            seeded("leg-press", "Leg Press", .squat, [.machine], [.legs, .glutes], ["running", "cycling", "field sports"], .beginner, false, "Machine-based leg press for quad and glute strength without spinal loading."),
+            seeded("leg-extension", "Leg Extension", .squat, [.machine], [.legs], ["running", "field sports"], .beginner, false, "Machine quad isolation for knee extension."),
+            seeded("push-up", "Push-Up", .horizontalPush, [.bodyweight], [.chest, .triceps, .shoulders], ["general", "surfing"], .beginner, false, "Scalable upper-body push that works almost anywhere."),
+            seeded("flat-barbell-bench-press", "Flat Barbell Bench Press", .horizontalPush, [.barbell, .bench], [.chest, .triceps, .shoulders], ["general", "surfing"], .beginner, false, "Standard flat barbell press for chest and triceps strength."),
+            seeded("incline-barbell-bench-press", "Incline Barbell Bench Press", .horizontalPush, [.barbell, .bench], [.chest, .shoulders, .triceps], ["general", "surfing"], .intermediate, false, "Upper-chest pressing variation using a barbell."),
+            seeded("decline-barbell-bench-press", "Decline Barbell Bench Press", .horizontalPush, [.barbell, .bench], [.chest, .triceps], ["general"], .intermediate, false, "Lower-angle bench press variation using a barbell."),
+            seeded("flat-dumbbell-bench-press", "Flat Dumbbell Bench Press", .horizontalPush, [.dumbbells, .bench], [.chest, .triceps], ["general", "surfing"], .beginner, false, "Simple flat dumbbell press option for most gyms."),
+            seeded("incline-dumbbell-bench-press", "Incline Dumbbell Bench Press", .horizontalPush, [.dumbbells, .bench], [.chest, .shoulders, .triceps], ["general", "surfing"], .beginner, false, "Upper-chest dumbbell pressing variation."),
+            seeded("decline-dumbbell-bench-press", "Decline Dumbbell Bench Press", .horizontalPush, [.dumbbells, .bench], [.chest, .triceps], ["general"], .intermediate, false, "Decline dumbbell press for chest and triceps."),
+            seeded("cable-chest-press", "Cable Chest Press", .horizontalPush, [.cable], [.chest, .triceps], ["general"], .beginner, false, "Stable pressing alternative when free weights are limited."),
+            seeded("cable-crossover", "Cable Crossover", .horizontalPush, [.cable], [.chest, .shoulders], ["general"], .beginner, false, "Cable fly variation for chest isolation."),
+            seeded("machine-chest-fly", "Machine Chest Fly", .horizontalPush, [.machine], [.chest], ["general"], .beginner, false, "Simple machine-based chest fly."),
+            seeded("machine-reverse-fly", "Machine Reverse Fly", .horizontalPull, [.machine], [.back, .shoulders], ["swimming", "surfing", "general"], .beginner, false, "Simple machine-based rear-delt and upper-back exercise."),
+            seeded("single-arm-dumbbell-row", "Single-Arm Dumbbell Row", .horizontalPull, [.dumbbells, .bench], [.back], ["running", "surfing", "general"], .beginner, true, "Easy horizontal pull that fits almost any program."),
+            seeded("machine-row", "Machine Row", .horizontalPull, [.machine], [.back], ["surfing", "swimming", "general"], .beginner, false, "Simple machine-based row for upper-back strength."),
+            seeded("seated-cable-row", "Seated Cable Row", .horizontalPull, [.cable], [.back], ["surfing", "general"], .beginner, false, "Low-skill row with controllable loading."),
+            seeded("chest-supported-row", "Chest-Supported Row", .horizontalPull, [.dumbbells, .bench], [.back], ["surfing", "general"], .beginner, false, "Pulling volume without much lower-back fatigue."),
+            seeded("face-pull", "Face Pull", .horizontalPull, [.cable], [.back, .shoulders], ["swimming", "surfing", "general"], .beginner, false, "Shoulder-friendly upper-back accessory."),
+            seeded("standing-overhead-press", "Standing Overhead Press", .verticalPush, [.barbell], [.shoulders, .triceps, .abs], ["general", "surfing"], .intermediate, false, "Vertical press with trunk demand."),
+            seeded("shoulder-press", "Shoulder Press", .verticalPush, [.machine], [.shoulders, .triceps], ["general", "surfing"], .beginner, false, "Simple machine-based shoulder press variation."),
+            seeded("dumbbell-shoulder-press", "Dumbbell Shoulder Press", .verticalPush, [.dumbbells], [.shoulders, .triceps], ["general", "surfing"], .beginner, false, "Accessible vertical push alternative."),
+            seeded("arnold-press", "Arnold Press", .verticalPush, [.dumbbells], [.shoulders, .triceps], ["general", "surfing"], .intermediate, false, "Rotating dumbbell shoulder press variation."),
+            seeded("dumbbell-front-raise", "Dumbbell Front Raise", .verticalPush, [.dumbbells], [.shoulders], ["general", "surfing"], .beginner, false, "Simple front-delt isolation exercise with dumbbells."),
+            seeded("dumbbell-lateral-raise", "Dumbbell Lateral Raise", .verticalPush, [.dumbbells], [.shoulders], ["general", "surfing"], .beginner, false, "Simple side-delt isolation exercise with dumbbells."),
+            seeded("tricep-pulldown", "Tricep Pulldown", .verticalPush, [.cable], [.triceps], ["general"], .beginner, false, "Simple cable triceps isolation exercise."),
+            seeded("tricep-press", "Tricep Press", .verticalPush, [.cable], [.triceps], ["general"], .beginner, false, "Simple cable triceps press or pushdown."),
+            seeded("pull-up", "Pull-Up", .verticalPull, [.pullUpBar], [.back, .biceps], ["surfing", "climbing", "general"], .intermediate, false, "High-value vertical pull for upper-body strength."),
+            seeded("lat-pulldown", "Lat Pulldown", .verticalPull, [.machine], [.back, .biceps], ["surfing", "swimming", "general"], .beginner, false, "Simple substitute for pull-ups when needed."),
+            seeded("dumbbell-curl", "Dumbbell Curl", .verticalPull, [.dumbbells], [.biceps], ["general"], .beginner, false, "Simple dumbbell biceps curl variation."),
+            seeded("preacher-bar-curl", "Preacher Bar Curl", .verticalPull, [.barbell, .bench], [.biceps], ["general"], .beginner, false, "Supported curling variation for biceps."),
+            seeded("dead-bug", "Dead Bug", .core, [.bodyweight], [.abs], ["running", "general"], .beginner, false, "Foundational trunk-control pattern."),
+            seeded("side-plank", "Side Plank", .core, [.bodyweight], [.abs, .glutes], ["running", "surfing", "general"], .beginner, false, "Simple anti-lateral-flexion core work."),
+            seeded("cable-crunch", "Cable Crunch", .core, [.cable], [.abs], ["general"], .beginner, false, "Simple cable-based abdominal exercise."),
+            seeded("machine-crunch", "Machine Crunch", .core, [.machine], [.abs], ["general"], .beginner, false, "Abdominal crunch on a crunch machine for controlled resistance."),
+            seeded("medicine-ball-situp-to-twist", "Medicine Ball Situp to Twist", .core, [.medicineBall], [.abs], ["general"], .beginner, false, "Sit-up with rotation, holding a medicine ball."),
+            seeded("medicine-ball-russian-twist", "Medicine Ball Russian Twist", .core, [.medicineBall], [.abs], ["general"], .beginner, false, "Seated rotation with a medicine ball for obliques and core."),
+            seeded("sit-up", "Sit-Up", .core, [.bodyweight], [.abs], ["running", "general"], .beginner, false, "Classic full sit-up from supine to seated."),
+            seeded("mountain-climbers", "Mountain Climbers", .core, [.bodyweight], [.abs], ["running", "general"], .beginner, false, "Dynamic plank with alternating knee drive."),
+            seeded("beast-hold", "Beast Hold", .core, [.bodyweight], [.abs], ["general"], .beginner, false, "Static hold in beast position with knees off the floor."),
+            seeded("plank", "Plank", .core, [.bodyweight], [.abs], ["running", "surfing", "general"], .beginner, false, "Static anti-extension core hold."),
+            seeded("bicycle-crunch", "Bicycle Crunch", .core, [.bodyweight], [.abs], ["general"], .beginner, false, "Alternating elbow-to-knee crunch for abs and obliques."),
+            seeded("hollow-hold", "Hollow Hold", .core, [.bodyweight], [.abs], ["running", "general"], .intermediate, false, "Static hollow-body position for core strength."),
+            seeded("bird-dog", "Bird Dog", .core, [.bodyweight], [.abs, .glutes], ["running", "general"], .beginner, true, "Alternating arm and leg extension for core and glute stability."),
+            seeded("reverse-crunch", "Reverse Crunch", .core, [.bodyweight], [.abs], ["general"], .beginner, false, "Lower-ab focus by curling hips toward your ribs."),
+            seeded("glute-bridge", "Glute Bridge", .hinge, [.bodyweight], [.glutes, .legs], ["running", "general"], .beginner, false, "Hip extension bridge for glute activation."),
+            seeded("cable-kickback", "Cable Kickback", .hinge, [.cable], [.glutes], ["general"], .beginner, true, "Single-leg hip extension at the cable for glute isolation."),
+            seeded("frog-pump", "Frog Pump", .hinge, [.bodyweight], [.glutes], ["general"], .beginner, false, "Glute bridge with feet together and knees out for glute focus."),
+            seeded("clam-shell", "Clam Shell", .core, [.bodyweight], [.glutes], ["running", "general"], .beginner, true, "Side-lying hip external rotation for glute medius."),
             // Flexibility / Stretches
-            exercise("Standing Hamstring Stretch", .stretch, [.bodyweight], [.legs], ["flexibility", "recovery"], .beginner, true, "Classic hamstring stretch standing.", "Stand with one foot slightly in front. Hinge at the hips and lean forward, keeping the front leg straight. Hold 20–30 seconds per side."),
-            exercise("Seated Hamstring Stretch", .stretch, [.bodyweight], [.legs], ["flexibility", "recovery"], .beginner, true, "Hamstring stretch seated on the floor.", "Sit with one leg extended, the other bent with foot to inner thigh. Fold forward over the straight leg. Hold 20–30 seconds per side."),
-            exercise("Hip Flexor Stretch", .stretch, [.bodyweight], [.legs, .glutes], ["flexibility", "recovery"], .beginner, true, "Kneeling hip flexor stretch.", "Kneel on one knee, other foot in front. Tuck your tailbone and lean slightly forward until you feel a stretch in the front of the back hip. Hold 20–30 seconds per side."),
-            exercise("Quad Stretch", .stretch, [.bodyweight], [.legs], ["flexibility", "recovery"], .beginner, true, "Standing quad stretch.", "Stand and pull one heel toward your glutes, keeping knees close. Hold 20–30 seconds per side."),
-            exercise("Calf Stretch", .stretch, [.bodyweight], [.legs], ["flexibility", "recovery"], .beginner, true, "Wall or step calf stretch.", "Place hands on a wall, one foot back. Keep the back leg straight and heel down. Hold 20–30 seconds per side. For a deeper stretch, bend the back knee slightly."),
-            exercise("Pigeon Pose", .stretch, [.bodyweight], [.glutes, .legs], ["flexibility", "recovery"], .beginner, true, "Hip opener stretch.", "From hands and knees, bring one knee forward and angle the shin. Extend the other leg back. Sit upright or fold forward. Hold 30–60 seconds per side."),
-            exercise("Figure-Four Stretch", .stretch, [.bodyweight], [.glutes, .legs], ["flexibility", "recovery"], .beginner, true, "Seated or supine glute stretch.", "Sit or lie on your back. Cross one ankle over the opposite knee. Gently pull the supporting leg toward you. Hold 20–30 seconds per side."),
-            exercise("Child's Pose", .stretch, [.bodyweight], [.back, .shoulders], ["flexibility", "recovery"], .beginner, false, "Resting stretch for back and hips.", "Kneel and sit your hips back toward your heels, arms extended forward. Rest your forehead on the floor. Hold 30–60 seconds."),
-            exercise("Cat-Cow", .stretch, [.bodyweight], [.back, .abs], ["flexibility", "recovery"], .beginner, false, "Spinal mobility stretch.", "On hands and knees, alternate between arching your back (cow) and rounding it (cat). Move slowly with your breath for 8–10 rounds."),
-            exercise("Thread the Needle", .stretch, [.bodyweight], [.back, .shoulders], ["flexibility", "recovery"], .beginner, true, "Upper-back and shoulder stretch.", "On hands and knees, slide one arm under your body and rotate your torso. Hold, then repeat on the other side. 20–30 seconds per side."),
-            exercise("Doorway Chest Stretch", .stretch, [.bodyweight], [.chest, .shoulders], ["flexibility", "recovery"], .beginner, false, "Chest and front-shoulder stretch.", "Stand in a doorway, arm at 90°. Step through and gently lean forward. Hold 20–30 seconds per side."),
-            exercise("Cross-Body Shoulder Stretch", .stretch, [.bodyweight], [.shoulders], ["flexibility", "recovery"], .beginner, true, "Shoulder and upper-arm stretch.", "Pull one arm across your chest with the other hand. Hold 20–30 seconds per side."),
-            exercise("Triceps Stretch", .stretch, [.bodyweight], [.triceps], ["flexibility", "recovery"], .beginner, true, "Triceps stretch behind the head.", "Reach one arm overhead, bend the elbow, and gently pull the elbow with the other hand. Hold 20–30 seconds per side."),
-            exercise("Neck Side Stretch", .stretch, [.bodyweight], [.shoulders], ["flexibility", "recovery"], .beginner, true, "Gentle neck stretch.", "Tilt your head to one side, ear toward shoulder. Optionally use your hand for light pressure. Hold 15–20 seconds per side."),
-            exercise("Seated Spinal Twist", .stretch, [.bodyweight], [.back, .abs], ["flexibility", "recovery"], .beginner, true, "Rotational spine stretch.", "Sit with one leg extended, other foot outside the knee. Twist your torso toward the bent knee. Hold 20–30 seconds per side."),
-            exercise("Knees to Chest", .stretch, [.bodyweight], [.back, .glutes], ["flexibility", "recovery"], .beginner, false, "Lower-back and hip release.", "Lie on your back and pull both knees toward your chest. Hold 20–30 seconds."),
-            exercise("World's Greatest Stretch", .stretch, [.bodyweight], [.legs, .back, .glutes], ["flexibility", "recovery"], .beginner, true, "Full-body mobility stretch.", "From a lunge, drop the back knee. Place same-side elbow inside the front foot, then rotate torso and reach arm up. Hold 20–30 seconds per side."),
-            exercise("Butterfly Stretch", .stretch, [.bodyweight], [.legs, .glutes], ["flexibility", "recovery"], .beginner, false, "Inner thigh and hip stretch.", "Sit with soles of feet together, knees out. Gently press knees down or fold forward. Hold 30–60 seconds."),
-            exercise("Lizard Lunge", .stretch, [.bodyweight], [.legs, .glutes], ["flexibility", "recovery"], .beginner, true, "Hip flexor and groin stretch.", "From a low lunge, lower back knee and optionally lower forearms inside the front foot. Hold 20–30 seconds per side."),
-            exercise("90/90 Hip Stretch", .stretch, [.bodyweight], [.legs, .glutes], ["flexibility", "recovery"], .beginner, true, "Hip rotation stretch.", "Sit with one leg at 90° in front, other at 90° to the side. Keep both knees bent. Fold forward or stay upright. Hold 20–30 seconds per side.")
+            seeded("standing-hamstring-stretch", "Standing Hamstring Stretch", .stretch, [.bodyweight], [.legs], ["flexibility", "recovery"], .beginner, true, "Classic hamstring stretch standing."),
+            seeded("seated-hamstring-stretch", "Seated Hamstring Stretch", .stretch, [.bodyweight], [.legs], ["flexibility", "recovery"], .beginner, true, "Hamstring stretch seated on the floor."),
+            seeded("hip-flexor-stretch", "Hip Flexor Stretch", .stretch, [.bodyweight], [.legs, .glutes], ["flexibility", "recovery"], .beginner, true, "Kneeling hip flexor stretch."),
+            seeded("quad-stretch", "Quad Stretch", .stretch, [.bodyweight], [.legs], ["flexibility", "recovery"], .beginner, true, "Standing quad stretch."),
+            seeded("calf-stretch", "Calf Stretch", .stretch, [.bodyweight], [.legs], ["flexibility", "recovery"], .beginner, true, "Wall or step calf stretch."),
+            seeded("pigeon-pose", "Pigeon Pose", .stretch, [.bodyweight], [.glutes, .legs], ["flexibility", "recovery"], .beginner, true, "Hip opener stretch."),
+            seeded("figure-four-stretch", "Figure-Four Stretch", .stretch, [.bodyweight], [.glutes, .legs], ["flexibility", "recovery"], .beginner, true, "Seated or supine glute stretch."),
+            seeded("childs-pose", "Child's Pose", .stretch, [.bodyweight], [.back, .shoulders], ["flexibility", "recovery"], .beginner, false, "Resting stretch for back and hips."),
+            seeded("cat-cow", "Cat-Cow", .stretch, [.bodyweight], [.back, .abs], ["flexibility", "recovery"], .beginner, false, "Spinal mobility stretch."),
+            seeded("thread-the-needle", "Thread the Needle", .stretch, [.bodyweight], [.back, .shoulders], ["flexibility", "recovery"], .beginner, true, "Upper-back and shoulder stretch."),
+            seeded("doorway-chest-stretch", "Doorway Chest Stretch", .stretch, [.bodyweight], [.chest, .shoulders], ["flexibility", "recovery"], .beginner, false, "Chest and front-shoulder stretch."),
+            seeded("cross-body-shoulder-stretch", "Cross-Body Shoulder Stretch", .stretch, [.bodyweight], [.shoulders], ["flexibility", "recovery"], .beginner, true, "Shoulder and upper-arm stretch."),
+            seeded("triceps-stretch", "Triceps Stretch", .stretch, [.bodyweight], [.triceps], ["flexibility", "recovery"], .beginner, true, "Triceps stretch behind the head."),
+            seeded("neck-side-stretch", "Neck Side Stretch", .stretch, [.bodyweight], [.shoulders], ["flexibility", "recovery"], .beginner, true, "Gentle neck stretch."),
+            seeded("seated-spinal-twist", "Seated Spinal Twist", .stretch, [.bodyweight], [.back, .abs], ["flexibility", "recovery"], .beginner, true, "Rotational spine stretch."),
+            seeded("knees-to-chest", "Knees to Chest", .stretch, [.bodyweight], [.back, .glutes], ["flexibility", "recovery"], .beginner, false, "Lower-back and hip release."),
+            seeded("worlds-greatest-stretch", "World's Greatest Stretch", .stretch, [.bodyweight], [.legs, .back, .glutes], ["flexibility", "recovery"], .beginner, true, "Full-body mobility stretch."),
+            seeded("butterfly-stretch", "Butterfly Stretch", .stretch, [.bodyweight], [.legs, .glutes], ["flexibility", "recovery"], .beginner, false, "Inner thigh and hip stretch."),
+            seeded("lizard-lunge", "Lizard Lunge", .stretch, [.bodyweight], [.legs, .glutes], ["flexibility", "recovery"], .beginner, true, "Hip flexor and groin stretch."),
+            seeded("ninety-ninety-hip-stretch", "90/90 Hip Stretch", .stretch, [.bodyweight], [.legs, .glutes], ["flexibility", "recovery"], .beginner, true, "Hip rotation stretch."),
         ]
     }
 
@@ -1084,7 +1140,8 @@ final class AppStore: ObservableObject {
         }
     }
 
-    private static func exercise(
+    private static func seeded(
+        _ catalogSlug: String,
         _ name: String,
         _ movementPattern: ExerciseMovementPattern,
         _ requiredEquipment: [ExerciseEquipmentKind],
@@ -1092,10 +1149,16 @@ final class AppStore: ObservableObject {
         _ goalSupportTags: [String],
         _ skillLevel: ExerciseSkillLevel,
         _ isUnilateral: Bool,
-        _ notes: String,
-        _ instructions: String
+        _ notes: String
     ) -> ExerciseLibraryItem {
-        ExerciseLibraryItem(
+        let dbEntry = ExerciseDbCatalog.entry(forCatalogSlug: catalogSlug)
+        let instructions: String
+        if let dbEntry, !dbEntry.instructions.isEmpty {
+            instructions = ExerciseDbCatalogEntry.formattedInstructions(dbEntry.instructions)
+        } else {
+            instructions = ""
+        }
+        return ExerciseLibraryItem(
             id: UUID(),
             name: name,
             movementPattern: movementPattern,
@@ -1106,6 +1169,8 @@ final class AppStore: ObservableObject {
             isUnilateral: isUnilateral,
             notes: notes,
             instructions: instructions,
+            catalogSlug: catalogSlug,
+            exerciseDb: dbEntry,
             source: .seeded
         )
     }
@@ -1401,9 +1466,10 @@ final class AppStore: ObservableObject {
         locationID: UUID?,
         durationMinutes: Int? = nil
     ) -> TrackedWorkoutSession {
+        let displayTitle = Self.trackSessionDisplayTitle(activityType: activityType)
         let adHocRoutineActivity = RoutineActivity(
             id: UUID(),
-            title: "Unplanned Workout",
+            title: displayTitle,
             activityType: activityType,
             focusAreas: focusAreas,
             scheduledWeekdays: [],
@@ -1440,11 +1506,12 @@ final class AppStore: ObservableObject {
             locationID: locationID,
             exercises: plannedExercises
         )
+        let displayTitle = Self.trackSessionDisplayTitle(activityType: activityType)
         let session = TrackedWorkoutSession(
             id: UUID(),
             startedAt: targetDate,
             routineActivityID: nil,
-            title: activityType,
+            title: displayTitle,
             activityType: activityType,
             summary: "Flexibility at \(locationName).",
             plannedDurationMinutes: duration,
@@ -1848,9 +1915,16 @@ final class AppStore: ObservableObject {
     }
 
     private func candidateExercises(for routineActivity: RoutineActivity, locationID: UUID? = nil) -> [ExerciseLibraryItem] {
-        exerciseLibrary
+        let normalizedActivityType = routineActivity.activityType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let isFlexibility = normalizedActivityType == "flexibility"
+        
+        return exerciseLibrary
             .filter { exercise in
-                isRelevantCandidate(exercise, for: routineActivity)
+                // Exclude stretches for non-Flexibility activities
+                if exercise.movementPattern == .stretch && !isFlexibility {
+                    return false
+                }
+                return isRelevantCandidate(exercise, for: routineActivity)
             }
             .filter { exercise in
                 supports(exercise: exercise, at: locationID ?? routineActivity.defaultLocationID)
